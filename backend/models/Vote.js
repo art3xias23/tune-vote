@@ -5,14 +5,9 @@ const voteSchema = new mongoose.Schema({
     type: Number,
     unique: true
   },
-  groupId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Group',
-    required: true
-  },
   status: {
     type: String,
-    enum: ['pending', 'active', 'runoff', 'completed'],
+    enum: ['pending', 'active', 'runoff', 'rating', 'completed'],
     default: 'pending'
   },
   availableBands: [{
@@ -50,6 +45,25 @@ const voteSchema = new mongoose.Schema({
       default: 0
     }
   }],
+  ratings: [{
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    score: {
+      type: Number,
+      min: 1,
+      max: 10
+    },
+    submittedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+  averageRating: {
+    type: Number,
+    default: 0
+  },
   createdAt: {
     type: Date,
     default: Date.now

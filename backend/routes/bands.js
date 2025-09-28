@@ -1,13 +1,13 @@
 const express = require('express');
 const axios = require('axios');
 const Band = require('../models/Band');
-const { authenticateToken } = require('./auth');
+const { validateUser } = require('../middleware/userAuth');
 
 const router = express.Router();
 
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', validateUser, async (req, res) => {
   try {
-    const bands = await Band.find().populate('addedBy', 'name email').sort({ createdAt: -1 });
+    const bands = await Band.find().populate('addedBy', 'name username').sort({ createdAt: -1 });
     res.json(bands);
   } catch (error) {
     console.error('Error fetching bands:', error);
@@ -15,7 +15,7 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/search', authenticateToken, async (req, res) => {
+router.get('/search', validateUser, async (req, res) => {
   try {
     const { q } = req.query;
     if (!q) {
@@ -24,7 +24,7 @@ router.get('/search', authenticateToken, async (req, res) => {
 
     const bands = await Band.find({
       name: { $regex: q, $options: 'i' }
-    }).populate('addedBy', 'name email').limit(20);
+    }).populate('addedBy', 'name username').limit(20);
 
     res.json(bands);
   } catch (error) {
@@ -33,7 +33,7 @@ router.get('/search', authenticateToken, async (req, res) => {
   }
 });
 
-router.get('/search-external', authenticateToken, async (req, res) => {
+router.get('/search-external', validateUser, async (req, res) => {
   try {
     const { q } = req.query;
     if (!q) {
@@ -90,7 +90,7 @@ router.get('/search-external', authenticateToken, async (req, res) => {
   }
 });
 
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', validateUser, async (req, res) => {
   try {
     const { name, image, spotifyId, lastFmId, musicBrainzId } = req.body;
 
@@ -109,11 +109,11 @@ router.post('/', authenticateToken, async (req, res) => {
       spotifyId,
       lastFmId,
       musicBrainzId,
-      addedBy: req.user.userId
+      addedBy: req.user._id
     });
 
     await band.save();
-    await band.populate('addedBy', 'name email');
+    await band.populate('addedBy', 'name username');
 
     res.status(201).json(band);
   } catch (error) {
@@ -122,14 +122,14 @@ router.post('/', authenticateToken, async (req, res) => {
   }
 });
 
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', validateUser, async (req, res) => {
   try {
     const band = await Band.findById(req.params.id);
     if (!band) {
       return res.status(404).json({ error: 'Band not found' });
     }
 
-    if (band.addedBy.toString() !== req.user.userId && !req.user.isAdmin) {
+    if (band.addedBy.toString() !== req.user._id.toString() && !req.user.isAdmin) {
       return res.status(403).json({ error: 'You can only delete bands you added' });
     }
 

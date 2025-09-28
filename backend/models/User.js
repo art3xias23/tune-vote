@@ -1,26 +1,18 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  facebookId: {
+  username: {
     type: String,
     required: true,
-    unique: true
-  },
-  email: {
-    type: String,
-    required: true,
-    unique: true
+    unique: true,
+    enum: ['Tino', 'Misho', 'Tedak']
   },
   name: {
     type: String,
     required: true
   },
-  profilePicture: {
-    type: String
-  },
-  groupId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Group',
+  avatar: {
+    type: String,
     required: true
   },
   isAdmin: {
@@ -31,13 +23,6 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-});
-
-userSchema.pre('save', function(next) {
-  if (this.email === process.env.ADMIN_EMAIL) {
-    this.isAdmin = true;
-  }
-  next();
 });
 
 module.exports = mongoose.model('User', userSchema);
