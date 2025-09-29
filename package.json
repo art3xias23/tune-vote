@@ -1,0 +1,13 @@
+{
+  "name": "tune-vote",
+  "version": "1.0.0",
+  "description": "Music voting application",
+  "scripts": {
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
+    "backend": "cd backend && npm run dev",
+    "frontend": "cd frontend && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  }
+}

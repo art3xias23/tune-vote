@@ -61,11 +61,63 @@ router.get('/search-external', validateUser, async (req, res) => {
         for (const artist of artistArray) {
           const existingBand = await Band.findOne({ name: artist.name });
           if (!existingBand) {
+            // Get detailed artist info including top albums
+            let artistInfo = null;
+            let topAlbums = [];
+
+            try {
+              // Get artist info
+              const artistInfoResponse = await axios.get('http://ws.audioscrobbler.com/2.0/', {
+                params: {
+                  method: 'artist.getinfo',
+                  artist: artist.name,
+                  api_key: process.env.LASTFM_API_KEY,
+                  format: 'json'
+                },
+                timeout: 3000
+              });
+
+              if (artistInfoResponse.data.artist) {
+                artistInfo = artistInfoResponse.data.artist;
+              }
+
+              // Get top albums
+              const albumsResponse = await axios.get('http://ws.audioscrobbler.com/2.0/', {
+                params: {
+                  method: 'artist.gettopalbums',
+                  artist: artist.name,
+                  api_key: process.env.LASTFM_API_KEY,
+                  format: 'json',
+                  limit: 5
+                },
+                timeout: 3000
+              });
+
+              if (albumsResponse.data.topalbums && albumsResponse.data.topalbums.album) {
+                const albums = Array.isArray(albumsResponse.data.topalbums.album)
+                  ? albumsResponse.data.topalbums.album
+                  : [albumsResponse.data.topalbums.album];
+
+                topAlbums = albums.slice(0, 5).map(album => ({
+                  name: album.name,
+                  playcount: parseInt(album.playcount) || 0,
+                  image: album.image?.[2]?.['#text'] || album.image?.[1]?.['#text'] || null
+                }));
+              }
+            } catch (detailError) {
+              console.warn(`Error getting details for ${artist.name}:`, detailError.message);
+            }
+
             searchResults.push({
               name: artist.name,
-              image: artist.image?.[2]?.['#text'] || artist.image?.[1]?.['#text'] || '/default-band.png',
+              image: artist.image?.[3]?.['#text'] || artist.image?.[2]?.['#text'] || artist.image?.[1]?.['#text'] || '/default-band.png',
               source: 'LastFM',
-              lastFmId: artist.mbid
+              lastFmId: artist.mbid,
+              bio: artistInfo?.bio?.summary ? artistInfo.bio.summary.replace(/<[^>]*>/g, '').substring(0, 200) + '...' : null,
+              listeners: artistInfo?.stats?.listeners ? parseInt(artistInfo.stats.listeners) : null,
+              playcount: artistInfo?.stats?.playcount ? parseInt(artistInfo.stats.playcount) : null,
+              topAlbums: topAlbums,
+              tags: artistInfo?.tags?.tag ? artistInfo.tags.tag.slice(0, 3).map(tag => tag.name) : []
             });
           }
         }

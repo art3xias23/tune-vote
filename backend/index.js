@@ -40,8 +40,8 @@ if (mongoUri.startsWith('mongodb://') || mongoUri.startsWith('mongodb+srv://')) 
 const bandsRouter = require('./routes/bands');
 const votesRouter = require('./routes/votes');
 
-app.use('/bands', bandsRouter);
-app.use('/votes', votesRouter);
+app.use('/api/bands', bandsRouter);
+app.use('/api/votes', votesRouter);
 
 app.get('/', (req, res) => {
   res.json({ message: 'Tune Vote API Server' });
