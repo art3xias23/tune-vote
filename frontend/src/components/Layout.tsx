@@ -72,9 +72,27 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </header>
 
+      {/* ✅ Added Dashboard link here */}
       <nav className="backdrop-blur-sm bg-white/70 border-b border-white/20 shadow-soft">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex space-x-1">
+            <Link
+              to="/dashboard"
+              className={`relative px-6 py-4 font-semibold text-sm transition-all duration-300 rounded-t-xl ${
+                isActive('/dashboard')
+                  ? 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-medium transform -translate-y-0.5'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <span className="flex items-center space-x-2">
+                <span className="text-lg">🏠</span>
+                <span>Dashboard</span>
+              </span>
+              {isActive('/dashboard') && (
+                <div className="absolute inset-x-0 -bottom-px h-1 bg-gradient-to-r from-transparent via-white to-transparent"></div>
+              )}
+            </Link>
+
             <Link
               to="/vote"
               className={`relative px-6 py-4 font-semibold text-sm transition-all duration-300 rounded-t-xl ${
@@ -91,6 +109,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <div className="absolute inset-x-0 -bottom-px h-1 bg-gradient-to-r from-transparent via-white to-transparent"></div>
               )}
             </Link>
+
             <Link
               to="/database"
               className={`relative px-6 py-4 font-semibold text-sm transition-all duration-300 rounded-t-xl ${

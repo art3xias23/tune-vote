@@ -60,6 +60,19 @@ const Database: React.FC = () => {
     }
   };
 
+  // Delete band function (not used in UI but can be added later)
+  const deleteBand = async (bandId: string) => {
+    if (!window.confirm('Are you sure you want to delete this band?')) return;
+
+    try {
+      await bandAPI.delete(bandId);
+      setBands(bands.filter(b => b._id !== bandId));
+      alert('Band deleted successfully!');
+    } catch (error: any) {
+      alert(error.response?.data?.error || 'Error deleting band');
+    }
+  };
+
   const filteredBands = bands.filter(band =>
     band.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -320,9 +333,32 @@ const Database: React.FC = () => {
                     padding: '1rem',
                     borderRadius: '8px',
                     boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                    textAlign: 'center'
+                    textAlign: 'center',
+                    position: 'relative'
                   }}
                 >
+                  {/* Delete Button */}
+    <button
+      onClick={() => deleteBand(band._id)}
+      style={{
+        position: 'absolute',
+        top: '8px',
+        right: '8px',
+        backgroundColor: '#ff4d4f',
+        color: 'white',
+        border: 'none',
+        borderRadius: '50%',
+        width: '24px',
+        height: '24px',
+        fontSize: '14px',
+        cursor: 'pointer',
+        lineHeight: 0,
+      }}
+      title="Delete Band"
+    >
+      ×
+    </button>
+
                   <img
                     src={band.image}
                     alt={band.name}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Vote as VoteType, User } from '../types';
 import { voteAPI } from '../services/api';
 
@@ -6,15 +6,15 @@ interface VoteCardProps {
   vote: VoteType;
   currentUser: User;
   onVoteUpdate: (vote: VoteType) => void;
+  onVoteDelete: (voteId: string) => void;
 }
 
-const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate }) => {
+const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate, onVoteDelete }) => {
   const [selectedBands, setSelectedBands] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-
-  const userHasVoted = vote.userVotes.some(uv => uv.userId === currentUser._id);
+  const hasVoted = vote.userVotes.some(uv => uv.userId === currentUser._id);
   const userHasRated = vote.ratings?.some(r => r.userId === currentUser._id);
-  const canVote = (vote.status === 'active' || vote.status === 'runoff') && !userHasVoted;
+  const canVote = (vote.status === 'active' || vote.status === 'runoff') && !hasVoted;
   const canRate = vote.status === 'rating' && !userHasRated;
 
   const maxSelections = vote.status === 'runoff' ? 1 : 3;
@@ -29,7 +29,6 @@ const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate }) 
 
   const submitVote = async () => {
     if (selectedBands.length !== maxSelections) return;
-
     setSubmitting(true);
     try {
       const response = await voteAPI.submitVote(vote._id, selectedBands);
@@ -42,6 +41,23 @@ const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate }) 
       setSubmitting(false);
     }
   };
+
+  const deleteVote = async (voteId: string) => {
+    if (!window.confirm('Are you sure you want to delete this vote? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await voteAPI.deleteVote(vote._id);
+      onVoteDelete(voteId);
+      alert('Vote deleted successfully.');
+      // Optionally, you can trigger a refresh or notify parent component
+    } catch (error: any) {
+      console.error('Error deleting vote:', error);
+      alert(error.response?.data?.error || 'Error deleting vote. Please try again.');
+    }
+  };
+
+  
 
   if (vote.status === 'completed') {
     return (
@@ -152,6 +168,26 @@ const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate }) 
       return (
         <div className="bg-gradient-to-br from-rating-50 via-rating-100 to-accent-50 backdrop-blur-sm
                       rounded-2xl p-8 shadow-large border border-rating-200/20 text-center animate-scale-in">
+                        <button
+      onClick={() => deleteVote(vote._id)}
+      style={{
+        position: 'absolute',
+        top: '8px',
+        right: '8px',
+        backgroundColor: '#ff4d4f',
+        color: 'white',
+        border: 'none',
+        borderRadius: '50%',
+        width: '24px',
+        height: '24px',
+        fontSize: '14px',
+        cursor: 'pointer',
+        lineHeight: 0,
+      }}
+      title="Delete Band"
+    >
+      ×
+    </button>
           <div className="w-20 h-20 bg-gradient-to-br from-rating-400 to-rating-600 rounded-2xl
                         flex items-center justify-center shadow-rating mx-auto mb-6 animate-bounce-subtle">
             <span className="text-4xl">⭐</span>
@@ -163,7 +199,7 @@ const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate }) 
             {vote.winner?.name}
           </div>
           <p className="text-rating-600 mb-8 max-w-md mx-auto">
-            Share your honest opinion about this band. Your rating helps the community discover great music!
+            Share your honest opinion about {vote.winner?.name}. Your rating helps the community discover great music!
           </p>
           <button
             onClick={() => onVoteUpdate({ ...vote, status: 'rating' })}
@@ -297,7 +333,7 @@ const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate }) 
     );
   }
 
-  if (userHasVoted) {
+  if (hasVoted) {
     return (
       <div className="bg-gradient-to-br from-vote-50 to-primary-50 backdrop-blur-sm rounded-2xl p-8
                     shadow-large border border-vote-200/20 text-center animate-scale-in">

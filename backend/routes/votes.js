@@ -92,9 +92,6 @@ router.post('/:id/submit', validateUser, async (req, res) => {
       });
     }
 
-    const existingVoteIndex = vote.userVotes.findIndex(
-      uv => uv.userId.toString() === req.user._id.toString()
-    );
 
     const userVote = {
       userId: req.user._id,
@@ -104,6 +101,10 @@ router.post('/:id/submit', validateUser, async (req, res) => {
       })),
       submittedAt: new Date()
     };
+
+    const existingVoteIndex = vote.userVotes.findIndex(
+  uv => uv.userId.toString() === req.user._id.toString()
+);
 
     if (existingVoteIndex >= 0) {
       vote.userVotes[existingVoteIndex] = userVote;
@@ -179,6 +180,21 @@ router.post('/:id/rating', validateUser, async (req, res) => {
     res.json(vote);
   } catch (error) {
     console.error('Error submitting rating:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.delete('/:id', validateUser, requireAdmin, async (req, res) => {
+  try {
+    const vote = await Vote.findById(req.params.id);
+    if (!vote) {
+      return res.status(404).json({ error: 'Vote not found' });
+    }
+
+    await Vote.deleteOne({ _id: req.params.id });
+    res.json({ message: 'Vote deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting vote:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

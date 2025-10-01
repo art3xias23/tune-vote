@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-globals */
 import React, { useState, useEffect } from 'react';
 import Layout from './Layout';
 import { Group, User } from '../types';

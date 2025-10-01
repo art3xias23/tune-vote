@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const mongoose = require('mongoose');
+const User = require('./models/User');
 require('dotenv').config();
 
 const app = express();
@@ -19,12 +20,11 @@ const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/tunevote'
 
 // Only connect to MongoDB if the URI is valid and MongoDB is available
 if (mongoUri.startsWith('mongodb://') || mongoUri.startsWith('mongodb+srv://')) {
-  mongoose.connect(mongoUri, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  }).catch(err => {
-    console.warn('MongoDB connection failed, running without database:', err.message);
+  mongoose.connect(mongoUri)
+  .then(async () => {
+    console.log('MongoDB connected');
   });
+
 
   mongoose.connection.on('connected', () => {
     console.log('Connected to MongoDB');

@@ -8,12 +8,9 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      navigate('/vote');
-    }, 3000);
 
-    return () => clearTimeout(timer);
-  }, [navigate]);
+  }, []);
+  
 
   const features = [
     {

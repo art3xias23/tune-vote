@@ -7,6 +7,7 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
+
 api.interceptors.request.use((config) => {
   const selectedUser = localStorage.getItem('selectedUser');
   if (selectedUser) {
@@ -16,22 +17,24 @@ api.interceptors.request.use((config) => {
 });
 
 export const bandAPI = {
-  search: (query: string) => api.get<Band[]>(`/bands/search?q=${query}`),
+  search: (query: string) => api.get<Band[]>(`/api/bands/search?q=${query}`),
   searchExternal: (query: string) =>
-    api.get<any[]>(`/bands/search-external?q=${query}`),
+    api.get<any[]>(`/api/bands/search-external?q=${query}`),
   add: (data: { name: string; image: string; spotifyId?: string }) =>
-    api.post<Band>('/bands', data),
-  getAll: () => api.get<Band[]>('/bands'),
+    api.post<Band>('/api/bands', data),
+  getAll: () => api.get<Band[]>('/api/bands'),
+  delete: (bandId: string) => api.delete<{ message: string }>(`/api/bands/${bandId}`),
 };
 
 export const voteAPI = {
-  getAll: () => api.get<Vote[]>('/votes'),
-  create: () => api.post<Vote>('/votes'),
-  submitVote: (voteId: string, selectedBands: string[]) =>
-    api.post(`/votes/${voteId}/submit`, { selectedBands }),
+  getAll: () => api.get<Vote[]>('/api/votes'),
+  create: () => api.post<Vote>('/api/votes'),
+  submitVote: (voteId: string, selectedBands: string[],) =>
+    api.post(`/api/votes/${voteId}/submit`, { selectedBands }),
   submitRating: (voteId: string, score: number) =>
-    api.post(`/votes/${voteId}/rating`, { score }),
-  getById: (id: string) => api.get<Vote>(`/votes/${id}`),
+    api.post(`/api/votes/${voteId}/rating`, { score }),
+  getById: (id: string) => api.get<Vote>(`/api/votes/${id}`),
+  deleteVote: (id: string) => api.delete(`/api/votes/${id}`),
 };
 
 export const groupAPI = {

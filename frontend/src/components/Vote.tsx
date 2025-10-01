@@ -45,7 +45,6 @@ const Vote: React.FC = () => {
 
   const handleVoteUpdate = (updatedVote: VoteType) => {
     setVotes(votes.map(v => v._id === updatedVote._id ? updatedVote : v));
-
     // If vote moved to rating phase, show rating modal
     if (updatedVote.status === 'rating' && updatedVote.winner) {
       setRatingVote(updatedVote);
@@ -253,6 +252,7 @@ const Vote: React.FC = () => {
                     vote={vote}
                     currentUser={user!}
                     onVoteUpdate={handleVoteUpdate}
+                    onVoteDelete={(voteId) => setVotes(votes.filter(v => v._id !== voteId))}
                   />
                 </div>
               </div>

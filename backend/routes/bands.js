@@ -2,8 +2,25 @@ const express = require('express');
 const axios = require('axios');
 const Band = require('../models/Band');
 const { validateUser } = require('../middleware/userAuth');
+const { format } = require('path');
 
 const router = express.Router();
+
+const getArtistImage = (artist) => {
+  if (!artist || !artist.image || artist.image.length === 0) return '/default-band.png';
+
+  console.log('Available images for', artist.name, artist.image);
+
+  const imageObj =
+    artist.image.find(img => img.size === 'extralarge') ||
+    artist.image.find(img => img.size === 'large') ||
+    artist.image.find(img => img.size === 'medium') ||
+    artist.image.find(img => img.size === 'small');
+
+  const url = imageObj ? imageObj['#text'] : '/default-band.png';
+  console.log('Selected image URL:', url);
+  return url;
+};
 
 router.get('/', validateUser, async (req, res) => {
   try {
@@ -24,7 +41,7 @@ router.get('/search', validateUser, async (req, res) => {
 
     const bands = await Band.find({
       name: { $regex: q, $options: 'i' }
-    }).populate('addedBy', 'name username').limit(20);
+    }).populate('addedBy', 'name username').limit(10);
 
     res.json(bands);
   } catch (error) {
@@ -36,90 +53,78 @@ router.get('/search', validateUser, async (req, res) => {
 router.get('/search-external', validateUser, async (req, res) => {
   try {
     const { q } = req.query;
+
+    console.log('Searching LastFM for:', q);
+    
     if (!q) {
       return res.status(400).json({ error: 'Search query required' });
     }
 
     const searchResults = [];
 
+    console.log('Using LastFM API key:', process.env.LASTFM_API_KEY);
+    searchResults.forEach(artist => {
+  console.log('Artist:', artist.name);
+  console.log('Image URL:', artist.image);
+  console.log('Listeners:', artist.listeners);
+  console.log('Bio:', artist.bio);
+});
+
+
+
     try {
-      const lastFmResponse = await axios.get('http://ws.audioscrobbler.com/2.0/', {
+      const lastFmResponse = await axios.get('https://ws.audioscrobbler.com/2.0/', {
         params: {
           method: 'artist.search',
           artist: q,
-          api_key: process.env.LASTFM_API_KEY || 'demo_key',
-          format: 'json',
+          api_key: process.env.LASTFM_API_KEY ,
+          format  : 'json',
+          headers: { 'User-Agent': 'TuneVoteApp/1.0 (konstantin.v.milchev@gmail.com)' },
           limit: 10
         },
+         
         timeout: 5000
       });
 
+      //console.log('LastFM search response:', lastFmResponse.data);
+
+
       if (lastFmResponse.data.results && lastFmResponse.data.results.artistmatches) {
-        const artists = lastFmResponse.data.results.artistmatches.artist || [];
-        const artistArray = Array.isArray(artists) ? artists : [artists];
+        let artists = lastFmResponse.data.results.artistmatches.artist || [];
+        if (!Array.isArray(artists)) artists = [artists];
+        artists = artists.slice(0, 2); // just the top match
 
-        for (const artist of artistArray) {
+        for (const artist of artists) {
           const existingBand = await Band.findOne({ name: artist.name });
-          if (!existingBand) {
-            // Get detailed artist info including top albums
-            let artistInfo = null;
-            let topAlbums = [];
 
-            try {
-              // Get artist info
-              const artistInfoResponse = await axios.get('http://ws.audioscrobbler.com/2.0/', {
-                params: {
-                  method: 'artist.getinfo',
-                  artist: artist.name,
-                  api_key: process.env.LASTFM_API_KEY,
-                  format: 'json'
-                },
-                timeout: 3000
-              });
-
-              if (artistInfoResponse.data.artist) {
-                artistInfo = artistInfoResponse.data.artist;
-              }
-
-              // Get top albums
-              const albumsResponse = await axios.get('http://ws.audioscrobbler.com/2.0/', {
-                params: {
-                  method: 'artist.gettopalbums',
-                  artist: artist.name,
-                  api_key: process.env.LASTFM_API_KEY,
-                  format: 'json',
-                  limit: 5
-                },
-                timeout: 3000
-              });
-
-              if (albumsResponse.data.topalbums && albumsResponse.data.topalbums.album) {
-                const albums = Array.isArray(albumsResponse.data.topalbums.album)
-                  ? albumsResponse.data.topalbums.album
-                  : [albumsResponse.data.topalbums.album];
-
-                topAlbums = albums.slice(0, 5).map(album => ({
-                  name: album.name,
-                  playcount: parseInt(album.playcount) || 0,
-                  image: album.image?.[2]?.['#text'] || album.image?.[1]?.['#text'] || null
-                }));
-              }
-            } catch (detailError) {
-              console.warn(`Error getting details for ${artist.name}:`, detailError.message);
-            }
-
-            searchResults.push({
-              name: artist.name,
-              image: artist.image?.[3]?.['#text'] || artist.image?.[2]?.['#text'] || artist.image?.[1]?.['#text'] || '/default-band.png',
-              source: 'LastFM',
-              lastFmId: artist.mbid,
-              bio: artistInfo?.bio?.summary ? artistInfo.bio.summary.replace(/<[^>]*>/g, '').substring(0, 200) + '...' : null,
-              listeners: artistInfo?.stats?.listeners ? parseInt(artistInfo.stats.listeners) : null,
-              playcount: artistInfo?.stats?.playcount ? parseInt(artistInfo.stats.playcount) : null,
-              topAlbums: topAlbums,
-              tags: artistInfo?.tags?.tag ? artistInfo.tags.tag.slice(0, 3).map(tag => tag.name) : []
+          // Always push artist info, even if in DB (optional: skip if you want)
+          let artistInfo = null;
+          try {
+            const artistInfoResponse = await axios.get('http://ws.audioscrobbler.com/2.0/', {
+              params: {
+                method: 'artist.getinfo',
+                artist: artist.name,
+                api_key: process.env.LASTFM_API_KEY,
+                format: 'json'
+              },
+              timeout: 3000
             });
+            if (artistInfoResponse.data.artist) artistInfo = artistInfoResponse.data.artist;
+          } catch (detailError) {
+            console.warn(`Error getting info for ${artist.name}:`, detailError.message);
           }
+
+          searchResults.push({
+            name: artist.name,
+            image: getArtistImage(artistInfo || artist),
+            source: 'LastFM',
+            lastFmId: artist.mbid,
+            bio: artistInfo?.bio?.summary ? artistInfo.bio.summary.replace(/<[^>]*>/g, '').substring(0, 200) + '...' : null,
+            listeners: artistInfo?.stats?.listeners ? parseInt(artistInfo.stats.listeners) : parseInt(artist.listeners),
+            playcount: artistInfo?.stats?.playcount ? parseInt(artistInfo.stats.playcount) : null,
+            topAlbums: [],
+            tags: artistInfo?.tags?.tag ? artistInfo.tags.tag.slice(0, 3).map(tag => tag.name) : []
+          });
         }
       }
     } catch (lastFmError) {
