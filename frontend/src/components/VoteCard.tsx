@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Vote as VoteType, User } from '../types';
+import { Vote as VoteType, User, VoteSubmission, Band } from '../types';
 import { voteAPI } from '../services/api';
 
 interface VoteCardProps {
@@ -12,7 +12,7 @@ interface VoteCardProps {
 const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate, onVoteDelete }) => {
   const [selectedBands, setSelectedBands] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const hasVoted = vote.userVotes.some(uv => uv.userId === currentUser._id);
+  const hasVoted = vote.votes.some((v: VoteSubmission) => v.userId === currentUser._id);
   const userHasRated = vote.ratings?.some(r => r.userId === currentUser._id);
   const canVote = (vote.status === 'active' || vote.status === 'runoff') && !hasVoted;
   const canRate = vote.status === 'rating' && !userHasRated;
@@ -31,7 +31,11 @@ const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate, on
     if (selectedBands.length !== maxSelections) return;
     setSubmitting(true);
     try {
-      const response = await voteAPI.submitVote(vote._id, selectedBands);
+      // For runoff votes (single selection) or regular votes with multiple bands
+      // Submit each band selection (in the future, this could be batch submission)
+      // For now, we'll submit the first selected band as the API expects a single bandId
+      const bandIdToSubmit = selectedBands[0]; // API currently expects single bandId
+      const response = await voteAPI.submitVote(vote._id, bandIdToSubmit);
       onVoteUpdate(response.data);
       setSelectedBands([]);
     } catch (error: any) {
@@ -75,7 +79,7 @@ const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate, on
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {vote.results.map((result, index) => {
-              const band = vote.availableBands.find(b => b._id === result.bandId);
+              const band = vote.selectedBands.find((b: Band) => b._id === result.bandId);
               if (!band) return null;
 
               return (
@@ -104,7 +108,7 @@ const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate, on
                   <div className="text-center">
                     <div className="font-semibold text-slate-800 text-sm mb-1">{band.name}</div>
                     <div className="text-xs text-slate-500 bg-slate-100 rounded-full px-2 py-1">
-                      {result.votes} vote{result.votes !== 1 ? 's' : ''}
+                      {result.voteCount} vote{result.voteCount !== 1 ? 's' : ''}
                     </div>
                   </div>
                 </div>
@@ -271,7 +275,7 @@ const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate, on
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-            {vote.availableBands.map((band, index) => (
+            {vote.selectedBands.map((band, index) => (
               <div
                 key={band._id}
                 onClick={() => handleBandSelect(band._id)}
@@ -350,13 +354,13 @@ const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate, on
             <div
               key={i}
               className={`w-4 h-4 rounded-full transition-all duration-300 ${
-                i < vote.userVotes.length ? 'bg-vote-500 shadow-vote' : 'bg-slate-200'
+                i < vote.votes.length ? 'bg-vote-500 shadow-vote' : 'bg-slate-200'
               }`}
             />
           ))}
         </div>
         <div className="text-sm text-vote-600 font-medium">
-          {vote.userVotes.length} of 3 members have voted
+          {vote.votes.length} of 3 members have voted
         </div>
       </div>
     );

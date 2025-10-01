@@ -13,6 +13,12 @@ const bandSchema = new mongoose.Schema({
   spotifyId: {
     type: String
   },
+  spotifyUri: {
+    type: String
+  },
+  genres: [{
+    type: String
+  }],
   lastFmId: {
     type: String
   },
@@ -20,9 +26,9 @@ const bandSchema = new mongoose.Schema({
     type: String
   },
   addedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+    type: String,
+    enum: ['Tino', 'Misho', 'Tedak', null],
+    default: null
   },
   createdAt: {
     type: Date,

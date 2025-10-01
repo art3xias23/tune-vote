@@ -20,7 +20,7 @@ export const bandAPI = {
   search: (query: string) => api.get<Band[]>(`/api/bands/search?q=${query}`),
   searchExternal: (query: string) =>
     api.get<any[]>(`/api/bands/search-external?q=${query}`),
-  add: (data: { name: string; image: string; spotifyId?: string }) =>
+  add: (data: { name: string; image: string; spotifyUri?: string; spotifyId?: string; genres?: string[]; username?: string }) =>
     api.post<Band>('/api/bands', data),
   getAll: () => api.get<Band[]>('/api/bands'),
   delete: (bandId: string) => api.delete<{ message: string }>(`/api/bands/${bandId}`),
@@ -28,11 +28,13 @@ export const bandAPI = {
 
 export const voteAPI = {
   getAll: () => api.get<Vote[]>('/api/votes'),
-  create: () => api.post<Vote>('/api/votes'),
-  submitVote: (voteId: string, selectedBands: string[],) =>
-    api.post(`/api/votes/${voteId}/submit`, { selectedBands }),
-  submitRating: (voteId: string, score: number) =>
-    api.post(`/api/votes/${voteId}/rating`, { score }),
+  getActive: () => api.get<Vote | null>('/api/votes/active'),
+  create: (selectedBands: string[], username?: string) =>
+    api.post<Vote>('/api/votes', { selectedBands, username: username || localStorage.getItem('selectedUser') }),
+  submitVote: (voteId: string, bandId: string, username?: string) =>
+    api.post(`/api/votes/${voteId}/submit`, { bandId, username: username || localStorage.getItem('selectedUser') }),
+  submitRating: (voteId: string, score: number, username?: string) =>
+    api.post(`/api/votes/${voteId}/rating`, { score, username: username || localStorage.getItem('selectedUser') }),
   getById: (id: string) => api.get<Vote>(`/api/votes/${id}`),
   deleteVote: (id: string) => api.delete(`/api/votes/${id}`),
 };

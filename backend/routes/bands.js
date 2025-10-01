@@ -1,30 +1,56 @@
 const express = require('express');
 const axios = require('axios');
 const Band = require('../models/Band');
-const { validateUser } = require('../middleware/userAuth');
 const { format } = require('path');
 
 const router = express.Router();
 
-const getArtistImage = (artist) => {
-  if (!artist || !artist.image || artist.image.length === 0) return '/default-band.png';
+// Spotify API token management
+let spotifyAccessToken = null;
+let tokenExpiresAt = null;
 
-  console.log('Available images for', artist.name, artist.image);
+const getSpotifyToken = async () => {
+  // Check if we have a valid token
+  if (spotifyAccessToken && tokenExpiresAt && new Date() < tokenExpiresAt) {
+    return spotifyAccessToken;
+  }
 
-  const imageObj =
-    artist.image.find(img => img.size === 'extralarge') ||
-    artist.image.find(img => img.size === 'large') ||
-    artist.image.find(img => img.size === 'medium') ||
-    artist.image.find(img => img.size === 'small');
+  try {
+    const response = await axios.post(
+      'https://accounts.spotify.com/api/token',
+      'grant_type=client_credentials',
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': 'Basic ' + Buffer.from(
+            process.env.SPOTIFY_CLIENT_ID + ':' + process.env.SPOTIFY_CLIENT_SECRET
+          ).toString('base64')
+        }
+      }
+    );
 
-  const url = imageObj ? imageObj['#text'] : '/default-band.png';
-  console.log('Selected image URL:', url);
-  return url;
+    spotifyAccessToken = response.data.access_token;
+    // Set expiration time (subtract 60 seconds for buffer)
+    tokenExpiresAt = new Date(Date.now() + (response.data.expires_in - 60) * 1000);
+    return spotifyAccessToken;
+  } catch (error) {
+    console.error('Error getting Spotify access token:', error.response?.data || error.message);
+    throw error;
+  }
 };
 
-router.get('/', validateUser, async (req, res) => {
+const getArtistImage = (images) => {
+  if (!images || images.length === 0) return '/default-band.png';
+
+  // Spotify provides images in descending size order
+  // Return the first (largest) image or medium sized one
+  const mediumImage = images.find(img => img.width >= 300 && img.width <= 640);
+  return mediumImage?.url || images[0]?.url || '/default-band.png';
+};
+
+router.get('/', async (req, res) => {
   try {
-    const bands = await Band.find().populate('addedBy', 'name username').sort({ createdAt: -1 });
+    const bands = await Band.find().sort({ createdAt: -1 });
     res.json(bands);
   } catch (error) {
     console.error('Error fetching bands:', error);
@@ -32,7 +58,7 @@ router.get('/', validateUser, async (req, res) => {
   }
 });
 
-router.get('/search', validateUser, async (req, res) => {
+router.get('/search', async (req, res) => {
   try {
     const { q } = req.query;
     if (!q) {
@@ -41,7 +67,7 @@ router.get('/search', validateUser, async (req, res) => {
 
     const bands = await Band.find({
       name: { $regex: q, $options: 'i' }
-    }).populate('addedBy', 'name username').limit(10);
+    }).limit(10);
 
     res.json(bands);
   } catch (error) {
@@ -50,85 +76,91 @@ router.get('/search', validateUser, async (req, res) => {
   }
 });
 
-router.get('/search-external', validateUser, async (req, res) => {
+router.get('/search-external', async (req, res) => {
   try {
     const { q } = req.query;
 
-    console.log('Searching LastFM for:', q);
-    
+    console.log('Searching Spotify for:', q);
+
     if (!q) {
       return res.status(400).json({ error: 'Search query required' });
     }
 
     const searchResults = [];
 
-    console.log('Using LastFM API key:', process.env.LASTFM_API_KEY);
-    searchResults.forEach(artist => {
-  console.log('Artist:', artist.name);
-  console.log('Image URL:', artist.image);
-  console.log('Listeners:', artist.listeners);
-  console.log('Bio:', artist.bio);
-});
-
-
-
     try {
-      const lastFmResponse = await axios.get('https://ws.audioscrobbler.com/2.0/', {
+      // Get Spotify access token
+      const accessToken = await getSpotifyToken();
+
+      // Search for artists on Spotify
+      const spotifySearchResponse = await axios.get('https://api.spotify.com/v1/search', {
         params: {
-          method: 'artist.search',
-          artist: q,
-          api_key: process.env.LASTFM_API_KEY ,
-          format  : 'json',
-          headers: { 'User-Agent': 'TuneVoteApp/1.0 (konstantin.v.milchev@gmail.com)' },
-          limit: 10
+          q: q,
+          type: 'artist',
+          limit: 5
         },
-         
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        },
         timeout: 5000
       });
 
-      //console.log('LastFM search response:', lastFmResponse.data);
+      if (spotifySearchResponse.data.artists && spotifySearchResponse.data.artists.items) {
+        const artists = spotifySearchResponse.data.artists.items;
 
-
-      if (lastFmResponse.data.results && lastFmResponse.data.results.artistmatches) {
-        let artists = lastFmResponse.data.results.artistmatches.artist || [];
-        if (!Array.isArray(artists)) artists = [artists];
-        artists = artists.slice(0, 2); // just the top match
-
-        for (const artist of artists) {
+        for (const artist of artists.slice(0, 3)) { // Get top 3 results
           const existingBand = await Band.findOne({ name: artist.name });
 
-          // Always push artist info, even if in DB (optional: skip if you want)
-          let artistInfo = null;
+          // Get more artist details
+          let topTracks = [];
+
           try {
-            const artistInfoResponse = await axios.get('http://ws.audioscrobbler.com/2.0/', {
-              params: {
-                method: 'artist.getinfo',
-                artist: artist.name,
-                api_key: process.env.LASTFM_API_KEY,
-                format: 'json'
-              },
-              timeout: 3000
-            });
-            if (artistInfoResponse.data.artist) artistInfo = artistInfoResponse.data.artist;
-          } catch (detailError) {
-            console.warn(`Error getting info for ${artist.name}:`, detailError.message);
+            // Get top tracks for the artist
+            const topTracksResponse = await axios.get(
+              `https://api.spotify.com/v1/artists/${artist.id}/top-tracks`,
+              {
+                params: { market: 'US' },
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+                timeout: 3000
+              }
+            );
+
+            if (topTracksResponse.data.tracks) {
+              topTracks = topTracksResponse.data.tracks.slice(0, 3).map(track => ({
+                name: track.name,
+                preview_url: track.preview_url,
+                album: track.album.name
+              }));
+            }
+          } catch (tracksError) {
+            console.warn(`Error getting top tracks for ${artist.name}:`, tracksError.message);
           }
 
           searchResults.push({
             name: artist.name,
-            image: getArtistImage(artistInfo || artist),
-            source: 'LastFM',
-            lastFmId: artist.mbid,
-            bio: artistInfo?.bio?.summary ? artistInfo.bio.summary.replace(/<[^>]*>/g, '').substring(0, 200) + '...' : null,
-            listeners: artistInfo?.stats?.listeners ? parseInt(artistInfo.stats.listeners) : parseInt(artist.listeners),
-            playcount: artistInfo?.stats?.playcount ? parseInt(artistInfo.stats.playcount) : null,
-            topAlbums: [],
-            tags: artistInfo?.tags?.tag ? artistInfo.tags.tag.slice(0, 3).map(tag => tag.name) : []
+            image: getArtistImage(artist.images),
+            source: 'Spotify',
+            spotifyId: artist.id,
+            spotifyUri: artist.uri,
+            externalUrls: artist.external_urls,
+            popularity: artist.popularity,
+            followers: artist.followers?.total || 0,
+            genres: artist.genres?.slice(0, 3) || [],
+            topTracks: topTracks,
+            inDatabase: !!existingBand
           });
         }
       }
-    } catch (lastFmError) {
-      console.warn('LastFM search failed:', lastFmError.message);
+    } catch (spotifyError) {
+      console.error('Spotify search failed:', spotifyError.response?.data || spotifyError.message);
+
+      // If Spotify fails, provide manual option
+      searchResults.push({
+        name: q,
+        image: '/default-band.png',
+        source: 'Manual',
+        description: 'Spotify search failed. Add this band manually.'
+      });
     }
 
     if (searchResults.length === 0) {
@@ -136,20 +168,20 @@ router.get('/search-external', validateUser, async (req, res) => {
         name: q,
         image: '/default-band.png',
         source: 'Manual',
-        description: 'Add this band manually'
+        description: 'No results found. Add this band manually.'
       });
     }
 
-    res.json(searchResults.slice(0, 10));
+    res.json(searchResults);
   } catch (error) {
     console.error('Error searching external sources:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-router.post('/', validateUser, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    const { name, image, spotifyId, lastFmId, musicBrainzId } = req.body;
+    const { name, image, spotifyId, spotifyUri, genres, username, lastFmId, musicBrainzId } = req.body;
 
     if (!name || !image) {
       return res.status(400).json({ error: 'Band name and image are required' });
@@ -164,13 +196,14 @@ router.post('/', validateUser, async (req, res) => {
       name,
       image,
       spotifyId,
+      spotifyUri,
+      genres,
       lastFmId,
       musicBrainzId,
-      addedBy: req.user._id
+      addedBy: username || null // Store the username directly
     });
 
     await band.save();
-    await band.populate('addedBy', 'name username');
 
     res.status(201).json(band);
   } catch (error) {
@@ -179,16 +212,14 @@ router.post('/', validateUser, async (req, res) => {
   }
 });
 
-router.delete('/:id', validateUser, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const band = await Band.findById(req.params.id);
     if (!band) {
       return res.status(404).json({ error: 'Band not found' });
     }
 
-    if (band.addedBy.toString() !== req.user._id.toString() && !req.user.isAdmin) {
-      return res.status(403).json({ error: 'You can only delete bands you added' });
-    }
+    // No user auth anymore - anyone can delete
 
     await Band.findByIdAndDelete(req.params.id);
     res.json({ message: 'Band deleted successfully' });

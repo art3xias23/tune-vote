@@ -111,6 +111,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </Link>
 
             <Link
+              to="/search"
+              className={`relative px-6 py-4 font-semibold text-sm transition-all duration-300 rounded-t-xl ${
+                isActive('/search')
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-medium transform -translate-y-0.5'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <span className="flex items-center space-x-2">
+                <span className="text-lg">🔍</span>
+                <span>Search</span>
+              </span>
+              {isActive('/search') && (
+                <div className="absolute inset-x-0 -bottom-px h-1 bg-gradient-to-r from-transparent via-white to-transparent"></div>
+              )}
+            </Link>
+
+            <Link
               to="/database"
               className={`relative px-6 py-4 font-semibold text-sm transition-all duration-300 rounded-t-xl ${
                 isActive('/database')
@@ -123,6 +140,23 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <span>Database</span>
               </span>
               {isActive('/database') && (
+                <div className="absolute inset-x-0 -bottom-px h-1 bg-gradient-to-r from-transparent via-white to-transparent"></div>
+              )}
+            </Link>
+
+            <Link
+              to="/my-ratings"
+              className={`relative px-6 py-4 font-semibold text-sm transition-all duration-300 rounded-t-xl ${
+                isActive('/my-ratings')
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-medium transform -translate-y-0.5'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
+            >
+              <span className="flex items-center space-x-2">
+                <span className="text-lg">⭐</span>
+                <span>My Ratings</span>
+              </span>
+              {isActive('/my-ratings') && (
                 <div className="absolute inset-x-0 -bottom-px h-1 bg-gradient-to-r from-transparent via-white to-transparent"></div>
               )}
             </Link>

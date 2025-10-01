@@ -13,36 +13,44 @@ export interface Band {
   name: string;
   image: string;
   spotifyId?: string;
+  spotifyUri?: string;
+  genres?: string[];
   lastFmId?: string;
   musicBrainzId?: string;
+  addedBy?: string;
   createdAt: string;
 }
 
-export interface UserVote {
+export interface VoteSubmission {
   userId: string;
-  selectedBands: string[];
+  bandId: string;
+  submittedAt: string;
+}
+
+export interface VoteResult {
+  bandId: string;
+  voteCount: number;
 }
 
 export interface Rating {
   userId: string;
   score: number;
+  submittedAt: string;
 }
 
 export interface Vote {
   _id: string;
   voteNumber: number;
-  creator: string;
-  status: 'active' | 'completed' | 'runoff' | 'rating';
-  participants: string[];
-  selectedBands: { [userId: string]: string[] };
+  createdBy: string;
+  status: 'active' | 'runoff' | 'rating' | 'completed' | 'tied';
+  selectedBands: Band[];
+  votes: VoteSubmission[];
   winner?: Band;
+  results: VoteResult[];
   ratings: Rating[];
-  userVotes: UserVote[];
-  availableBands: Band[];
-  results: { bandId: string; votes: number; percentage: number }[];
   averageRating: number;
   createdAt: string;
-  updatedAt: string;
+  completedAt?: string;
 }
 
 export interface Group {

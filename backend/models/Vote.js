@@ -7,25 +7,27 @@ const voteSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'active', 'runoff', 'rating', 'completed'],
-    default: 'pending'
+    enum: ['active', 'rating', 'completed', 'tied'],
+    default: 'active'
   },
-  availableBands: [{
+  createdBy: {
+    type: String,
+    enum: ['Tino', 'Misho', 'Tedak'],
+    required: true
+  },
+  selectedBands: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Band'
   }],
-  userVotes: [{
+  votes: [{
     userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+      type: String,
+      enum: ['Tino', 'Misho', 'Tedak']
     },
-    selectedBands: [{
-      bandId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Band'
-      },
-      rank: Number
-    }],
+    bandId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Band'
+    },
     submittedAt: {
       type: Date,
       default: Date.now
@@ -47,8 +49,8 @@ const voteSchema = new mongoose.Schema({
   }],
   ratings: [{
     userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
+      type: String,
+      enum: ['Tino', 'Misho', 'Tedak']
     },
     score: {
       type: Number,

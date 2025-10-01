@@ -1,18 +1,15 @@
 const express = require('express');
 const Vote = require('../models/Vote');
 const Band = require('../models/Band');
-const User = require('../models/User');
-const { validateUser, requireAdmin } = require('../middleware/userAuth');
 
 const router = express.Router();
 
-router.get('/', validateUser, async (req, res) => {
+// Get all votes
+router.get('/', async (req, res) => {
   try {
     const votes = await Vote.find()
-      .populate('availableBands')
+      .populate('selectedBands')
       .populate('winner')
-      .populate('userVotes.userId', 'name username')
-      .populate('ratings.userId', 'name username')
       .sort({ createdAt: -1 });
 
     res.json(votes);
@@ -22,14 +19,27 @@ router.get('/', validateUser, async (req, res) => {
   }
 });
 
-router.get('/:id', validateUser, async (req, res) => {
+// Get active vote
+router.get('/active', async (req, res) => {
+  try {
+    const activeVote = await Vote.findOne({ status: 'active' })
+      .populate('selectedBands')
+      .populate('votes.bandId');
+
+    res.json(activeVote);
+  } catch (error) {
+    console.error('Error fetching active vote:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get specific vote
+router.get('/:id', async (req, res) => {
   try {
     const vote = await Vote.findById(req.params.id)
-      .populate('availableBands')
+      .populate('selectedBands')
       .populate('winner')
-      .populate('userVotes.userId', 'name username')
-      .populate('userVotes.selectedBands.bandId')
-      .populate('ratings.userId', 'name username');
+      .populate('votes.bandId');
 
     if (!vote) {
       return res.status(404).json({ error: 'Vote not found' });
@@ -42,28 +52,42 @@ router.get('/:id', validateUser, async (req, res) => {
   }
 });
 
-router.post('/', validateUser, requireAdmin, async (req, res) => {
+// Create a new vote (any user can create by selecting 3 bands)
+router.post('/', async (req, res) => {
   try {
-    const previousVotes = await Vote.find().populate('winner');
-    const excludedBandIds = previousVotes
-      .filter(v => v.winner)
-      .map(v => v.winner._id.toString());
+    const { selectedBands, username } = req.body;
 
-    const availableBands = await Band.find({
-      _id: { $nin: excludedBandIds }
-    });
-
-    if (availableBands.length < 3) {
-      return res.status(400).json({ error: 'Not enough bands available for voting (minimum 3 required)' });
+    // Validate username
+    if (!username || !['Tino', 'Misho', 'Tedak'].includes(username)) {
+      return res.status(400).json({ error: 'Invalid username' });
     }
 
+    // Check if there's already an active vote
+    const activeVote = await Vote.findOne({ status: 'active' });
+    if (activeVote) {
+      return res.status(400).json({ error: 'There is already an active vote' });
+    }
+
+    // Validate that exactly 3 bands are selected
+    if (!selectedBands || selectedBands.length !== 3) {
+      return res.status(400).json({ error: 'Please select exactly 3 bands' });
+    }
+
+    // Verify all bands exist
+    const bands = await Band.find({ _id: { $in: selectedBands } });
+    if (bands.length !== 3) {
+      return res.status(400).json({ error: 'Invalid band selection' });
+    }
+
+    // Create the vote
     const vote = new Vote({
-      availableBands: availableBands.map(b => b._id),
+      createdBy: username,
+      selectedBands: selectedBands,
       status: 'active'
     });
 
     await vote.save();
-    await vote.populate('availableBands');
+    await vote.populate('selectedBands');
 
     res.status(201).json(vote);
   } catch (error) {
@@ -72,56 +96,52 @@ router.post('/', validateUser, requireAdmin, async (req, res) => {
   }
 });
 
-router.post('/:id/submit', validateUser, async (req, res) => {
+// Submit a vote (other users vote for 1 of the 3 bands)
+router.post('/:id/submit', async (req, res) => {
   try {
-    const { selectedBands } = req.body;
+    const { bandId, username } = req.body;
     const vote = await Vote.findById(req.params.id);
 
     if (!vote) {
       return res.status(404).json({ error: 'Vote not found' });
     }
 
-    if (vote.status !== 'active' && vote.status !== 'runoff') {
+    if (vote.status !== 'active') {
       return res.status(400).json({ error: 'Vote is not active' });
     }
 
-    const expectedSelections = vote.status === 'runoff' ? 1 : 3;
-    if (!selectedBands || selectedBands.length !== expectedSelections) {
-      return res.status(400).json({
-        error: `Please select exactly ${expectedSelections} band${expectedSelections > 1 ? 's' : ''}`
-      });
+    // Validate username
+    if (!username || !['Tino', 'Misho', 'Tedak'].includes(username)) {
+      return res.status(400).json({ error: 'Invalid username' });
     }
 
-
-    const userVote = {
-      userId: req.user._id,
-      selectedBands: selectedBands.map((bandId, index) => ({
-        bandId,
-        rank: index + 1
-      })),
-      submittedAt: new Date()
-    };
-
-    const existingVoteIndex = vote.userVotes.findIndex(
-  uv => uv.userId.toString() === req.user._id.toString()
-);
-
-    if (existingVoteIndex >= 0) {
-      vote.userVotes[existingVoteIndex] = userVote;
-    } else {
-      vote.userVotes.push(userVote);
+    // Check if user already voted
+    const existingVote = vote.votes.find(v => v.userId === username);
+    if (existingVote) {
+      return res.status(400).json({ error: 'You have already voted' });
     }
+
+    // Validate band is one of the options
+    const validBand = vote.selectedBands.some(b => b.toString() === bandId);
+    if (!validBand) {
+      return res.status(400).json({ error: 'Invalid band selection' });
+    }
+
+    // Add the vote
+    vote.votes.push({
+      userId: username,
+      bandId: bandId
+    });
 
     await vote.save();
 
     // Check if all 3 users have voted
-    if (vote.userVotes.length === 3) {
+    if (vote.votes.length === 3) {
       await processVoteResults(vote);
     }
 
-    await vote.populate('availableBands');
+    await vote.populate('selectedBands');
     await vote.populate('winner');
-    await vote.populate('userVotes.userId', 'name username');
 
     res.json(vote);
   } catch (error) {
@@ -130,61 +150,8 @@ router.post('/:id/submit', validateUser, async (req, res) => {
   }
 });
 
-router.post('/:id/rating', validateUser, async (req, res) => {
-  try {
-    const { score } = req.body;
-    const vote = await Vote.findById(req.params.id);
-
-    if (!vote) {
-      return res.status(404).json({ error: 'Vote not found' });
-    }
-
-    if (vote.status !== 'rating') {
-      return res.status(400).json({ error: 'Vote is not in rating phase' });
-    }
-
-    if (!score || score < 1 || score > 10) {
-      return res.status(400).json({ error: 'Score must be between 1 and 10' });
-    }
-
-    const existingRatingIndex = vote.ratings.findIndex(
-      r => r.userId.toString() === req.user._id.toString()
-    );
-
-    const rating = {
-      userId: req.user._id,
-      score: parseInt(score),
-      submittedAt: new Date()
-    };
-
-    if (existingRatingIndex >= 0) {
-      vote.ratings[existingRatingIndex] = rating;
-    } else {
-      vote.ratings.push(rating);
-    }
-
-    // Calculate average rating
-    const totalScore = vote.ratings.reduce((sum, r) => sum + r.score, 0);
-    vote.averageRating = totalScore / vote.ratings.length;
-
-    // Check if all users have rated
-    if (vote.ratings.length === 3) {
-      vote.status = 'completed';
-      vote.completedAt = new Date();
-    }
-
-    await vote.save();
-    await vote.populate('ratings.userId', 'name username');
-    await vote.populate('winner');
-
-    res.json(vote);
-  } catch (error) {
-    console.error('Error submitting rating:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-router.delete('/:id', validateUser, requireAdmin, async (req, res) => {
+// Delete a vote
+router.delete('/:id', async (req, res) => {
   try {
     const vote = await Vote.findById(req.params.id);
     if (!vote) {
@@ -199,35 +166,100 @@ router.delete('/:id', validateUser, requireAdmin, async (req, res) => {
   }
 });
 
+// Add rating submission endpoint
+router.post('/:id/rating', async (req, res) => {
+  try {
+    const { score, username } = req.body;
+    const vote = await Vote.findById(req.params.id);
+
+    if (!vote) {
+      return res.status(404).json({ error: 'Vote not found' });
+    }
+
+    if (vote.status !== 'rating') {
+      return res.status(400).json({ error: 'Vote is not in rating phase' });
+    }
+
+    if (!score || score < 1 || score > 10) {
+      return res.status(400).json({ error: 'Score must be between 1 and 10' });
+    }
+
+    if (!username || !['Tino', 'Misho', 'Tedak'].includes(username)) {
+      return res.status(400).json({ error: 'Invalid username' });
+    }
+
+    // Check if user already rated
+    const existingRating = vote.ratings.find(r => r.userId === username);
+    if (existingRating) {
+      return res.status(400).json({ error: 'You have already rated' });
+    }
+
+    // Add the rating
+    vote.ratings.push({
+      userId: username,
+      score: parseInt(score)
+    });
+
+    // Calculate average rating
+    const totalScore = vote.ratings.reduce((sum, r) => sum + r.score, 0);
+    vote.averageRating = totalScore / vote.ratings.length;
+
+    // Check if all users have rated
+    if (vote.ratings.length === 3) {
+      vote.status = 'completed';
+      vote.completedAt = new Date();
+    }
+
+    await vote.save();
+    await vote.populate('winner');
+    await vote.populate('selectedBands');
+
+    res.json(vote);
+  } catch (error) {
+    console.error('Error submitting rating:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Process vote results when all users have voted
 async function processVoteResults(vote) {
+  // Count votes for each band
   const voteCount = {};
 
-  vote.userVotes.forEach(userVote => {
-    userVote.selectedBands.forEach(selection => {
-      const bandId = selection.bandId.toString();
-      voteCount[bandId] = (voteCount[bandId] || 0) + 1;
-    });
+  vote.votes.forEach(v => {
+    const bandId = v.bandId.toString();
+    voteCount[bandId] = (voteCount[bandId] || 0) + 1;
   });
 
+  // Store results
   vote.results = Object.entries(voteCount).map(([bandId, count]) => ({
     bandId,
     voteCount: count
   }));
 
-  const sortedResults = vote.results.sort((a, b) => b.voteCount - a.voteCount);
-  const maxVotes = sortedResults[0]?.voteCount || 0;
-  const winners = sortedResults.filter(r => r.voteCount === maxVotes);
+  // Find winner(s)
+  const maxVotes = Math.max(...Object.values(voteCount));
+  const winners = Object.entries(voteCount)
+    .filter(([_, count]) => count === maxVotes)
+    .map(([bandId]) => bandId);
 
   if (winners.length === 1) {
-    vote.winner = winners[0].bandId;
-    vote.status = 'rating';  // Move to rating phase
-  } else if (winners.length === 2 && vote.status === 'active') {
-    vote.status = 'runoff';
-    vote.availableBands = winners.map(w => w.bandId);
-    vote.userVotes = [];
-  } else if (winners.length > 2 || (winners.length > 1 && vote.status === 'runoff')) {
-    vote.status = 'pending';
-    vote.userVotes = [];
+    // Clear winner - move to rating phase
+    vote.winner = winners[0];
+    vote.status = 'rating';  // Move to rating phase instead of completed
+  } else {
+    // Tie - create a new vote with the same bands
+    vote.status = 'tied';
+    vote.completedAt = new Date();
+
+    // Create a new vote with the same bands
+    const newVote = new Vote({
+      createdBy: vote.createdBy,
+      selectedBands: vote.selectedBands,
+      status: 'active'
+    });
+
+    await newVote.save();
   }
 
   await vote.save();

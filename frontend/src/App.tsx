@@ -1,19 +1,23 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { UserProvider } from './contexts/UserContext';
+import { ToastProvider } from './contexts/ToastContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import UserSelection from './components/UserSelection';
 import Dashboard from './components/Dashboard';
 import Database from './components/Database';
+import SearchBands from './components/SearchBands';
 import Vote from './components/Vote';
+import MyRatings from './components/MyRatings';
 import './App.css';
 
 function App() {
   return (
     <UserProvider>
-      <Router>
-        <div className="App">
-          <Routes>
+      <ToastProvider>
+        <Router>
+          <div className="App">
+            <Routes>
             <Route path="/select-user" element={<UserSelection />} />
             <Route
               path="/dashboard"
@@ -32,6 +36,14 @@ function App() {
               }
             />
             <Route
+              path="/search"
+              element={
+                <PrivateRoute>
+                  <SearchBands />
+                </PrivateRoute>
+              }
+            />
+            <Route
               path="/vote"
               element={
                 <PrivateRoute>
@@ -39,10 +51,19 @@ function App() {
                 </PrivateRoute>
               }
             />
+            <Route
+              path="/my-ratings"
+              element={
+                <PrivateRoute>
+                  <MyRatings />
+                </PrivateRoute>
+              }
+            />
             <Route path="/" element={<Navigate to="/select-user" replace />} />
           </Routes>
         </div>
       </Router>
+      </ToastProvider>
     </UserProvider>
   );
 }
