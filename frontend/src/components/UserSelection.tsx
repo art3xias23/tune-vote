@@ -49,7 +49,6 @@ const UserSelection: React.FC = () => {
               <button
                 onClick={() => {
                   console.log('Button clicked for user:', user.username);
-                  alert(`Selected: ${user.name}`);
                   handleUserSelect(user.username);
                 }}
                 className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700
