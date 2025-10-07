@@ -55,7 +55,7 @@ const voteSchema = new mongoose.Schema({
     score: {
       type: Number,
       min: 1,
-      max: 10
+      max: 5
     },
     submittedAt: {
       type: Date,
@@ -81,13 +81,13 @@ voteSchema.pre('save', async function(next) {
     this.voteNumber = lastVote ? lastVote.voteNumber + 1 : 1;
   }
 
-  // Validate one vote per user
-  const userVotes = {};
+  // Validate max 3 votes per user
+  const userVoteCounts = {};
   this.votes.forEach(vote => {
-    if (userVotes[vote.userId]) {
-      throw new Error(`User ${vote.userId} has already voted`);
+    userVoteCounts[vote.userId] = (userVoteCounts[vote.userId] || 0) + 1;
+    if (userVoteCounts[vote.userId] > 3) {
+      throw new Error(`User ${vote.userId} cannot vote for more than 3 bands`);
     }
-    userVotes[vote.userId] = true;
   });
 
   next();

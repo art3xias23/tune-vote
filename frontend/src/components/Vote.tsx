@@ -14,13 +14,22 @@ const VoteComponent: React.FC = () => {
   const [selectedVote, setSelectedVote] = useState<Vote | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [rating, setRating] = useState(5);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [votingBands, setVotingBands] = useState<string[]>([]);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Reset rating when a new vote is selected
+  useEffect(() => {
+    if (selectedVote) {
+      setRating(0);
+      setHoverRating(0);
+    }
+  }, [selectedVote]);
 
   const loadData = async () => {
     try {
@@ -40,6 +49,12 @@ const VoteComponent: React.FC = () => {
   };
 
   const handleBandSelect = (bandId: string) => {
+    // Prevent selecting previous winners
+    if (isBandPreviousWinner(bandId)) {
+      showToast('This band has already won a previous vote and cannot be selected again', 'error');
+      return;
+    }
+
     if (selectedBands.includes(bandId)) {
       setSelectedBands(selectedBands.filter(id => id !== bandId));
     } else if (selectedBands.length < 3) {
@@ -92,8 +107,8 @@ const VoteComponent: React.FC = () => {
       showToast('Please select at least one band', 'error');
       return;
     }
-    if (votingBands.length > 1) {
-      showToast('You can select maximum 1 bands', 'error');
+    if (votingBands.length > 3) {
+      showToast('You can select maximum 3 bands', 'error');
       return;
     }
 
@@ -118,10 +133,10 @@ const VoteComponent: React.FC = () => {
   const toggleVotingBand = (bandId: string) => {
     if (votingBands.includes(bandId)) {
       setVotingBands(votingBands.filter(id => id !== bandId));
-    } else if (votingBands.length < 1) {
+    } else if (votingBands.length < 3) {
       setVotingBands([...votingBands, bandId]);
     } else {
-      showToast('You can select up to 1 bands', 'info');
+      showToast('You can select up to 3 bands', 'info');
     }
   };
 
@@ -152,8 +167,18 @@ const VoteComponent: React.FC = () => {
     return vote.ratings.some(r => r.userId === user.username || r.userId === user._id);
   };
 
+  const canCreateNewVote = (): boolean => {
+    if (votes.length === 0) return true;
+    const latestVote = votes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    return latestVote.status === 'completed' && latestVote.ratings.length === 3;
+  };
+
   const getVoteCount = (vote: Vote, bandId: string) => {
     return vote.votes.filter(v => v.bandId === bandId).length;
+  };
+
+  const isBandPreviousWinner = (bandId: string): boolean => {
+    return votes.some(vote => vote.winner && vote.winner._id === bandId && vote.status === 'completed');
   };
 
   const getRatingColor = (score: number) => {
@@ -178,16 +203,19 @@ const VoteComponent: React.FC = () => {
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h2 className="text-slate-900 dark:text-slate-100 text-2xl font-bold mb-4">Voting System</h2>
           <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
+            onClick={() => canCreateNewVote() && setShowCreateForm(!showCreateForm)}
+            disabled={!canCreateNewVote()}
+            title={!canCreateNewVote() ? "Complete the current vote's rating phase before creating a new one" : ""}
             style={{
-              backgroundColor: '#1db954',
+              backgroundColor: canCreateNewVote() ? '#1db954' : '#6b7280',
               color: 'white',
               border: 'none',
               padding: '10px 24px',
               borderRadius: '6px',
               fontSize: '16px',
               fontWeight: '600',
-              cursor: 'pointer'
+              cursor: canCreateNewVote() ? 'pointer' : 'not-allowed',
+              opacity: canCreateNewVote() ? 1 : 0.7
             }}
           >
             {showCreateForm ? 'Cancel' : '+ Create New Vote'}
@@ -229,44 +257,89 @@ const VoteComponent: React.FC = () => {
               gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
               gap: '1rem'
             }}>
-              {bands.map(band => (
-                <div
-                  key={band._id}
-                  onClick={() => handleBandSelect(band._id)}
-                  style={{
-                    padding: '0.5rem',
-                    borderRadius: '8px',
-                    border: selectedBands.includes(band._id) ? '2px solid #1db954' : '2px solid #e0e0e0',
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    backgroundColor: selectedBands.includes(band._id) ? '#e8f5e9' : 'white',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <img
-                    src={band.image}
-                    alt={band.name}
+              {bands.map(band => {
+                const isPreviousWinner = isBandPreviousWinner(band._id);
+                const isSelected = selectedBands.includes(band._id);
+
+                return (
+                  <div
+                    key={band._id}
+                    onClick={() => !isPreviousWinner && handleBandSelect(band._id)}
                     style={{
-                      width: '80px',
-                      height: '80px',
-                      borderRadius: '6px',
-                      objectFit: 'cover',
-                      marginBottom: '0.5rem'
+                      padding: '0.5rem',
+                      borderRadius: '8px',
+                      border: isPreviousWinner
+                        ? '2px solid #d1d5db'
+                        : isSelected
+                          ? '2px solid #1db954'
+                          : '2px solid #e0e0e0',
+                      cursor: isPreviousWinner ? 'not-allowed' : 'pointer',
+                      textAlign: 'center',
+                      backgroundColor: isPreviousWinner
+                        ? '#f3f4f6'
+                        : isSelected
+                          ? '#e8f5e9'
+                          : 'white',
+                      opacity: isPreviousWinner ? 0.5 : 1,
+                      transition: 'all 0.2s',
+                      position: 'relative'
                     }}
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = '/default-band.png';
-                    }}
-                  />
-                  <div style={{ fontWeight: selectedBands.includes(band._id) ? '600' : '400' }}>
-                    {band.name}
-                  </div>
-                  {selectedBands.includes(band._id) && (
-                    <div style={{ color: '#1db954', fontSize: '12px', marginTop: '4px' }}>
-                      ✓ Selected
+                  >
+                    {isPreviousWinner && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '4px',
+                        right: '4px',
+                        backgroundColor: '#fbbf24',
+                        color: 'white',
+                        borderRadius: '50%',
+                        width: '24px',
+                        height: '24px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        zIndex: 1
+                      }}>
+                        👑
+                      </div>
+                    )}
+
+                    <img
+                      src={band.image}
+                      alt={band.name}
+                      style={{
+                        width: '80px',
+                        height: '80px',
+                        borderRadius: '6px',
+                        objectFit: 'cover',
+                        marginBottom: '0.5rem',
+                        filter: isPreviousWinner ? 'grayscale(70%)' : 'none'
+                      }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/default-band.png';
+                      }}
+                    />
+                    <div style={{
+                      fontWeight: isSelected ? '600' : '400',
+                      color: isPreviousWinner ? '#6b7280' : 'inherit'
+                    }}>
+                      {band.name}
                     </div>
-                  )}
-                </div>
-              ))}
+                    {isSelected && !isPreviousWinner && (
+                      <div style={{ color: '#1db954', fontSize: '12px', marginTop: '4px' }}>
+                        ✓ Selected
+                      </div>
+                    )}
+                    {isPreviousWinner && (
+                      <div style={{ color: '#6b7280', fontSize: '10px', marginTop: '4px', fontWeight: '500' }}>
+                        Previous Winner
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -413,7 +486,7 @@ const VoteComponent: React.FC = () => {
                     fontSize: '1.2rem',
                     fontWeight: '600'
                   }}>
-                    Selected: {votingBands.length} / 1 band
+                    Selected: {votingBands.length} / 3 bands
                   </div>
                 </div>
 
@@ -668,7 +741,7 @@ const VoteComponent: React.FC = () => {
                       color: '#64748b'
                     }}>
                       You have selected {votingBands.length} band{votingBands.length > 1 ? 's' : ''}.
-                      You can select up to {2 - votingBands.length} more.
+                      You can select up to {3 - votingBands.length} more.
                     </p>
                   )}
                 </div>
@@ -680,48 +753,226 @@ const VoteComponent: React.FC = () => {
                 `}</style>
               </div>
             ) : selectedVote.status === 'rating' && !hasUserRated(selectedVote) && selectedVote.winner ? (
-              // RATING PHASE
-              <div style={{ textAlign: 'center' }}>
-                <h4>Rate the Winner: {selectedVote.winner.name}</h4>
-                <div style={{ marginTop: '2rem' }}>
-                  <div style={{ fontSize: '3rem', fontWeight: 'bold', color: getRatingColor(rating) }}>
-                    {rating}
-                  </div>
-                  <div style={{ color: '#666' }}>out of 10</div>
+              // RATING PHASE - Show horizontal images AND 5-star rating system
+              <div>
+                {/* Results Header */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                  padding: '2rem',
+                  borderRadius: '16px',
+                  marginBottom: '2rem',
+                  textAlign: 'center',
+                  border: '1px solid rgba(148, 163, 184, 0.2)'
+                }}>
+                  <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.8rem', fontWeight: '700', color: '#1e293b' }}>
+                    📊 Vote Results
+                  </h3>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '1.1rem' }}>
+                    All 3 members have voted
+                  </p>
                 </div>
 
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={rating}
-                  onChange={(e) => setRating(parseInt(e.target.value))}
-                  style={{
-                    width: '100%',
-                    maxWidth: '400px',
-                    margin: '2rem auto'
-                  }}
-                />
+                {/* Band Results - Horizontal Layout */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '2rem',
+                  marginBottom: '4rem'
+                }}>
+                  {selectedVote.selectedBands
+                    .map(band => ({
+                      ...band,
+                      voteCount: getVoteCount(selectedVote, band._id),
+                      voters: selectedVote.votes.filter(v => v.bandId === band._id)
+                    }))
+                    .sort((a, b) => b.voteCount - a.voteCount)
+                    .map((band, index) => {
+                      const percentage = (band.voteCount / Math.max(selectedVote.votes.length, 1)) * 100;
+                      const isWinner = selectedVote.winner && selectedVote.winner._id === band._id;
 
-                <button
-                  onClick={() => submitRating(selectedVote._id)}
-                  disabled={submitting}
-                  style={{
-                    backgroundColor: '#9333ea',
-                    color: 'white',
-                    border: 'none',
-                    padding: '12px 32px',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {submitting ? 'Submitting...' : 'Submit Rating'}
-                </button>
+                      return (
+                        <div key={band._id} style={{
+                          position: 'relative',
+                          background: 'white',
+                          borderRadius: '20px',
+                          overflow: 'hidden',
+                          boxShadow: isWinner
+                            ? '0 8px 30px rgba(16, 185, 129, 0.25)'
+                            : '0 4px 20px rgba(0,0,0,0.08)',
+                          border: isWinner ? '3px solid #10b981' : '3px solid transparent',
+                          transform: isWinner ? 'scale(1.02)' : 'scale(1)',
+                          transition: 'all 0.3s ease'
+                        }}>
+                          {/* Position Badge - Top Left */}
+                          <div style={{
+                            position: 'absolute',
+                            top: '15px',
+                            left: '15px',
+                            width: '50px',
+                            height: '50px',
+                            borderRadius: '50%',
+                            background: `linear-gradient(135deg, ${isWinner ? '#f97316' : index === 1 ? '#6b7280' : '#94a3b8'} 0%, ${isWinner ? '#ea580c' : index === 1 ? '#4b5563' : '#64748b'} 100%)`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontWeight: 'bold',
+                            fontSize: '1.4rem',
+                            zIndex: 2,
+                            boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                            border: isWinner ? '3px solid #fff' : 'none'
+                          }}>
+                            #{isWinner ? '1' : index + 1}
+                          </div>
+
+                          {/* Winner Badge - Top Right */}
+                          {isWinner && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '15px',
+                              right: '15px',
+                              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                              color: 'white',
+                              padding: '10px 20px',
+                              borderRadius: '30px',
+                              fontSize: '1rem',
+                              fontWeight: '800',
+                              zIndex: 2,
+                              boxShadow: '0 4px 20px rgba(16, 185, 129, 0.4)',
+                              border: '2px solid #fff',
+                              textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                            }}>
+                              WINNER
+                            </div>
+                          )}
+
+                          {/* Large Band Image */}
+                          <div style={{
+                            position: 'relative',
+                            width: '100%',
+                            paddingBottom: '100%',
+                            overflow: 'hidden',
+                            background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.8) 100%)'
+                          }}>
+                            <img
+                              src={band.image}
+                              alt={band.name}
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/default-band.png';
+                              }}
+                            />
+
+                            {/* Band Name Overlay */}
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              padding: '1.5rem',
+                              background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.9) 100%)'
+                            }}>
+                              <h3 style={{
+                                color: 'white',
+                                margin: 0,
+                                fontSize: '1.5rem',
+                                fontWeight: '700',
+                                textShadow: '0 2px 4px rgba(0,0,0,0.7)'
+                              }}>
+                                {band.name}
+                              </h3>
+                              <p style={{
+                                color: '#e2e8f0',
+                                margin: '0.5rem 0 0 0',
+                                fontSize: '1rem',
+                                fontWeight: '500'
+                              }}>
+                                {band.voteCount} vote{band.voteCount !== 1 ? 's' : ''}
+                                {band.voters.length > 0 && (
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '0.5rem' }}>
+                                    {band.voters.map((vote, idx) => (
+                                      <span
+                                        key={idx}
+                                        style={{
+                                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                          color: 'white',
+                                          padding: '2px 8px',
+                                          borderRadius: '12px',
+                                          fontSize: '0.8rem',
+                                          fontWeight: '600',
+                                          boxShadow: '0 2px 4px rgba(16, 185, 129, 0.3)',
+                                          border: '1px solid rgba(255, 255, 255, 0.2)'
+                                        }}
+                                      >
+                                        {vote.userId}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* 5-Star Rating System */}
+                <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg dark:shadow-gray-900/20 border border-gray-200 dark:border-gray-700 text-center">
+                  <h4 className="text-slate-900 dark:text-slate-100 text-xl font-semibold mb-6">
+                    Rate the Winner: {selectedVote.winner.name}
+                  </h4>
+                  <div style={{ marginTop: '2rem' }}>
+                    <div className="flex justify-center gap-2 mb-6"
+                         onMouseLeave={() => setHoverRating(0)}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => setRating(star)}
+                          onMouseEnter={() => setHoverRating(star)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            fontSize: '3.5rem',
+                            cursor: 'pointer',
+                            color: star <= (hoverRating || rating) ? '#fbbf24' : '#e5e7eb',
+                            transition: 'all 0.2s ease',
+                            padding: '0.5rem',
+                            transform: star <= (hoverRating || rating) ? 'scale(1.1)' : 'scale(1)',
+                            filter: star <= (hoverRating || rating) ? 'drop-shadow(0 0 8px rgba(251, 191, 36, 0.5))' : 'none'
+                          }}
+                        >
+                          {star <= (hoverRating || rating) ? '⭐' : '☆'}
+                        </button>
+                      ))}
+                    </div>
+                    <p style={{
+                      margin: '1rem 0 2rem 0',
+                      fontSize: '1.2rem',
+                      color: rating > 0 ? '#059669' : '#64748b'
+                    }}>
+                      {rating > 0 ? `${rating} out of 5 stars` : 'Click to rate the winner'}
+                    </p>
+
+                    <button
+                      onClick={() => submitRating(selectedVote._id)}
+                      disabled={submitting || rating === 0}
+                      className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-lg font-semibold text-lg transition-colors"
+                    >
+                      {submitting ? 'Submitting...' : 'Submit Rating'}
+                    </button>
+                  </div>
+                </div>
               </div>
-            ) : (
-              // RESULTS VIEW
+            ) : (selectedVote.status === 'rating' || selectedVote.status === 'completed') && selectedVote.winner ? (
+              // RESULTS VIEW - Shows in both rating and completed phases
               <div>
                 {/* Results Header */}
                 <div style={{
@@ -740,11 +991,11 @@ const VoteComponent: React.FC = () => {
                   </p>
                 </div>
 
-                {/* Band Results with bigger images */}
+                {/* Band Results - Horizontal Layout */}
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-                  gap: '1.5rem',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '2rem',
                   marginBottom: '2rem'
                 }}>
                   {selectedVote.selectedBands
@@ -756,7 +1007,7 @@ const VoteComponent: React.FC = () => {
                     .sort((a, b) => b.voteCount - a.voteCount)
                     .map((band, index) => {
                       const percentage = (band.voteCount / Math.max(selectedVote.votes.length, 1)) * 100;
-                      const isWinner = index === 0 && band.voteCount > 0;
+                      const isWinner = selectedVote.winner && selectedVote.winner._id === band._id;
 
                       return (
                         <div key={band._id} style={{
@@ -771,57 +1022,56 @@ const VoteComponent: React.FC = () => {
                           transform: isWinner ? 'scale(1.02)' : 'scale(1)',
                           transition: 'all 0.3s ease'
                         }}>
-                          {/* Winner Badge */}
-                          {isWinner && (
-                            <div style={{
-                              position: 'absolute',
-                              top: '15px',
-                              right: '15px',
-                              background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
-                              color: 'white',
-                              padding: '8px 16px',
-                              borderRadius: '25px',
-                              fontSize: '0.9rem',
-                              fontWeight: '700',
-                              zIndex: 2,
-                              boxShadow: '0 4px 15px rgba(249, 115, 22, 0.3)'
-                            }}>
-                              🏆 Leading
-                            </div>
-                          )}
-
-                          {/* Position Badge */}
+                          {/* Position Badge - Top Left */}
                           <div style={{
                             position: 'absolute',
                             top: '15px',
                             left: '15px',
-                            width: '45px',
-                            height: '45px',
+                            width: '50px',
+                            height: '50px',
                             borderRadius: '50%',
-                            background: `linear-gradient(135deg, ${index === 0 ? '#f97316' :
-                              index === 1 ? '#6b7280' : '#94a3b8'
-                              } 0%, ${index === 0 ? '#ea580c' :
-                                index === 1 ? '#4b5563' : '#64748b'
-                              } 100%)`,
+                            background: `linear-gradient(135deg, ${isWinner ? '#f97316' : index === 1 ? '#6b7280' : '#94a3b8'} 0%, ${isWinner ? '#ea580c' : index === 1 ? '#4b5563' : '#64748b'} 100%)`,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             color: 'white',
                             fontWeight: 'bold',
-                            fontSize: '1.3rem',
-                            zIndex: 1,
-                            boxShadow: '0 4px 10px rgba(0,0,0,0.2)'
+                            fontSize: '1.4rem',
+                            zIndex: 2,
+                            boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
+                            border: isWinner ? '3px solid #fff' : 'none'
                           }}>
-                            #{index + 1}
+                            #{isWinner ? '1' : index + 1}
                           </div>
+
+                          {/* Winner Badge - Top Right */}
+                          {isWinner && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '15px',
+                              right: '15px',
+                              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                              color: 'white',
+                              padding: '10px 20px',
+                              borderRadius: '30px',
+                              fontSize: '1rem',
+                              fontWeight: '800',
+                              zIndex: 2,
+                              boxShadow: '0 4px 20px rgba(16, 185, 129, 0.4)',
+                              border: '2px solid #fff',
+                              textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                            }}>
+                              WINNER
+                            </div>
+                          )}
 
                           {/* Large Band Image */}
                           <div style={{
                             position: 'relative',
                             width: '100%',
-                            paddingBottom: '75%', // 4:3 aspect ratio
+                            paddingBottom: '100%', // Square aspect ratio for horizontal layout
                             overflow: 'hidden',
-                            background: 'linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.6) 100%)'
+                            background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.8) 100%)'
                           }}>
                             <img
                               src={band.image}
@@ -921,13 +1171,14 @@ const VoteComponent: React.FC = () => {
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                   {band.voters.map((vote, idx) => (
                                     <div key={idx} style={{
-                                      background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                                       color: 'white',
                                       padding: '4px 12px',
                                       borderRadius: '15px',
                                       fontSize: '0.85rem',
                                       fontWeight: '600',
-                                      boxShadow: '0 2px 6px rgba(59, 130, 246, 0.3)'
+                                      boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)',
+                                      border: '1px solid rgba(255, 255, 255, 0.2)'
                                     }}>
                                       {vote.userId}
                                     </div>
@@ -969,6 +1220,11 @@ const VoteComponent: React.FC = () => {
                     </p>
                   </div>
                 )}
+              </div>
+            ) : (
+              // FALLBACK - Other statuses or no winner
+              <div className="text-center p-8">
+                <p className="text-slate-600 dark:text-slate-400">Vote details will be shown here when available.</p>
               </div>
             )}
           </div>

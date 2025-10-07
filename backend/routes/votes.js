@@ -118,38 +118,35 @@ router.post('/:id/submit', async (req, res) => {
       return res.status(400).json({ error: 'Invalid username' });
     }
 
-    // Check if user already voted for 2 bands
-    const userVotes = vote.votes.filter(v => v.userId === username).map(v => v.bandId.toString());
-    //const uniqueNewBandIds = bandIds.filter(bandId => !userVotes.includes(bandId));
-    if (userVotes.length + bandIds.length > 2) {
-      return res.status(400).json({ error: 'You can vote for up to 2 bands' });
-    }
-    // Validate and add each bandId
-    if (!bandIds || bandIds.length !== 1) {
-      return res.status(400).json({ error: 'You must select exactly 2 bands' });
+    // Check if user already voted
+    const userVotes = vote.votes.filter(v => v.userId === username);
+    if (userVotes.length > 0) {
+      return res.status(400).json({ error: 'You have already voted in this session' });
     }
 
-    // Replace the vote adding section with:
-for (const bandId of bandIds) {
-  const validBand = vote.selectedBands.some(b => b._id.toString() === bandId);
-  if (!validBand) {
-    return res.status(400).json({ error: 'Invalid band selection' });
-  }
-  
-  // Check if already voted for this band
-  const alreadyVoted = userVotes.some(v => v.bandId.toString() === bandId);
-  if (!alreadyVoted) {
-    vote.votes.push({
-      userId: username,
-      bandId: bandId
-    });
-  }
-}
+    // Validate that user is voting for 1-3 bands
+    if (!bandIds || bandIds.length === 0 || bandIds.length > 3) {
+      return res.status(400).json({ error: 'You must select 1-3 bands' });
+    }
+
+    // Add votes for each selected band
+    for (const bandId of bandIds) {
+      const validBand = vote.selectedBands.some(b => b._id.toString() === bandId);
+      if (!validBand) {
+        return res.status(400).json({ error: 'Invalid band selection' });
+      }
+
+      vote.votes.push({
+        userId: username,
+        bandId: bandId
+      });
+    }
 
     await vote.save();
 
-    // If all users voted for 2 bands each (6 votes), process results
-    if (vote.votes.length === 3) {
+    // Check if all users have voted (3 users total)
+    const uniqueVoters = [...new Set(vote.votes.map(v => v.userId))];
+    if (uniqueVoters.length === 3) {
       await processVoteResults(vote);
     }
     await vote.populate('selectedBands');
@@ -192,8 +189,8 @@ router.post('/:id/rating', async (req, res) => {
       return res.status(400).json({ error: 'Vote is not in rating phase' });
     }
 
-    if (!score || score < 1 || score > 10) {
-      return res.status(400).json({ error: 'Score must be between 1 and 10' });
+    if (!score || score < 1 || score > 5) {
+      return res.status(400).json({ error: 'Score must be between 1 and 5 stars' });
     }
 
     if (!username || !['Tino', 'Misho', 'Tedak'].includes(username)) {
@@ -282,13 +279,12 @@ async function processVoteResults(vote) {
   if (winners.length === 1) {
     console.log(`Single winner found: ${winners[0]}`); // Log single winner
     vote.winner = winners[0];
-    vote.status = 'completed';
-    vote.completedAt = new Date();
+    vote.status = 'rating'; // Move to rating phase
   } else {
     console.log(`Tie between ${winners.length} bands`); // Log tie situation
-    vote.status = 'completed'; // End vote if tie
-    vote.completedAt = new Date();
-
+    // For ties, pick first winner and move to rating phase
+    vote.winner = winners[0];
+    vote.status = 'rating';
   }
 
   await vote.save();

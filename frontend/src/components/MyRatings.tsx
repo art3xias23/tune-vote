@@ -66,10 +66,10 @@ const MyRatings: React.FC = () => {
   };
 
   const getRatingColor = (rating: number) => {
-    if (rating >= 8) return '#10b981'; // green
-    if (rating >= 6) return '#f59e0b'; // yellow
-    if (rating >= 4) return '#ef4444'; // red
-    return '#6b7280'; // gray
+    if (rating >= 4) return '#10b981'; // green (4-5 stars)
+    if (rating >= 3) return '#f59e0b'; // yellow (3 stars)
+    if (rating >= 2) return '#ef4444'; // red (2 stars)
+    return '#6b7280'; // gray (1 star)
   };
 
   if (loading) {
@@ -110,9 +110,9 @@ const MyRatings: React.FC = () => {
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg dark:shadow-gray-900/20 text-center border border-gray-200 dark:border-gray-700">
             <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#f59e0b' }}>
-              {ratedBands.filter(r => r.rating >= 8).length}
+              {ratedBands.filter(r => r.rating >= 4).length}
             </div>
-            <div className="text-slate-600 dark:text-slate-400 text-sm">Highly Rated (8+)</div>
+            <div className="text-slate-600 dark:text-slate-400 text-sm">Highly Rated (4+ stars)</div>
           </div>
         </div>
 
@@ -187,32 +187,27 @@ const MyRatings: React.FC = () => {
                   </div>
 
                   <div style={{ textAlign: 'center' }}>
+                    <div className="flex justify-center gap-1 mb-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span
+                          key={star}
+                          style={{
+                            fontSize: '1.5rem',
+                            color: star <= item.rating ? '#fbbf24' : '#e5e7eb'
+                          }}
+                        >
+                          ⭐
+                        </span>
+                      ))}
+                    </div>
                     <div style={{
-                      fontSize: '2rem',
+                      fontSize: '1.5rem',
                       fontWeight: 'bold',
                       color: getRatingColor(item.rating)
                     }}>
                       {item.rating}
                     </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-500">/ 10</div>
-                    <div style={{
-                      display: 'flex',
-                      gap: '2px',
-                      marginTop: '8px',
-                      justifyContent: 'center'
-                    }}>
-                      {[...Array(10)].map((_, i) => (
-                        <div
-                          key={i}
-                          style={{
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '2px',
-                            backgroundColor: i < item.rating ? getRatingColor(item.rating) : '#e5e7eb'
-                          }}
-                        />
-                      ))}
-                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-500">/ 5 stars</div>
                   </div>
                 </div>
               </div>

@@ -1,15 +1,66 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from './Layout';
 import { useUser } from '../contexts/UserContext';
+import { voteAPI } from '../services/api';
+import { Vote } from '../types';
 
 const Dashboard: React.FC = () => {
   const { user } = useUser();
   const navigate = useNavigate();
+  const [votes, setVotes] = useState<Vote[]>([]);
+  const [pendingActions, setPendingActions] = useState<{
+    type: 'vote' | 'rate';
+    vote: Vote;
+    message: string;
+  }[]>([]);
 
   useEffect(() => {
+    loadVoteData();
+  }, [user]);
 
-  }, []);
+  const loadVoteData = async () => {
+    if (!user) return;
+
+    try {
+      const response = await voteAPI.getAll();
+      const votesData = response.data;
+      setVotes(votesData);
+
+      // Check for pending actions
+      const actions: typeof pendingActions = [];
+
+      votesData.forEach((vote: Vote) => {
+        // Check if user needs to vote
+        if (vote.status === 'active') {
+          const hasUserVoted = vote.votes.some(v => v.userId === user.username);
+          if (!hasUserVoted) {
+            actions.push({
+              type: 'vote',
+              vote,
+              message: `Vote on 3 bands in Vote #${vote.voteNumber}`
+            });
+          }
+        }
+
+        // Check if user needs to rate
+        if (vote.status === 'rating' && vote.winner) {
+          const hasUserRated = vote.ratings.some(r => r.userId === user.username);
+          if (!hasUserRated) {
+            actions.push({
+              type: 'rate',
+              vote,
+              message: `Rate the winner: ${vote.winner.name}`
+            });
+          }
+        }
+      });
+
+      setPendingActions(actions);
+    } catch (error) {
+      console.error('Error loading vote data:', error);
+    }
+  };
 
 
   const features = [
@@ -73,6 +124,63 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Action Items Section */}
+        {pendingActions.length > 0 && (
+          <div className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20
+                          rounded-2xl p-6 border-2 border-red-200 dark:border-red-700/50 shadow-large">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-orange-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-lg font-bold">!</span>
+              </div>
+              <h2 className="text-2xl font-bold text-red-700 dark:text-red-300">
+                Action Required
+              </h2>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {pendingActions.map((action, index) => (
+                <div
+                  key={index}
+                  className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-red-200 dark:border-red-700/50
+                             hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:-translate-y-1"
+                  onClick={() => navigate('/vote')}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      action.type === 'vote'
+                        ? 'bg-gradient-to-br from-blue-500 to-purple-500'
+                        : 'bg-gradient-to-br from-amber-500 to-orange-500'
+                    }`}>
+                      <span className="text-white text-lg">
+                        {action.type === 'vote' ? '🗳️' : '⭐'}
+                      </span>
+                    </div>
+
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-800 dark:text-gray-200">
+                        {action.type === 'vote' ? 'Cast Your Vote' : 'Rate Winner'}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {action.message}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center text-red-500 dark:text-red-400">
+                      <span className="text-xl">→</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 text-center">
+              <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+                Click any item above to take action
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="grid md:grid-cols-3 gap-6">
           {features.map((feature, index) => (
