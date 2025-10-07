@@ -54,18 +54,18 @@ EOF
 COPY --from=builder /app/build /usr/share/nginx/html
 
 # Create non-root user
-RUN addgroup -g 1001 -S nginx && \
-    adduser -S nginxuser -u 1001 -G nginx
+RUN addgroup -g 1001 -S nginx-group && \
+    adduser -S nginxuser -u 1001 -G nginx-group
 
 # Set proper permissions
-RUN chown -R nginxuser:nginx /usr/share/nginx/html && \
-    chown -R nginxuser:nginx /var/cache/nginx && \
-    chown -R nginxuser:nginx /var/log/nginx && \
-    chown -R nginxuser:nginx /etc/nginx/conf.d
+RUN chown -R nginxuser:nginx-group /usr/share/nginx/html && \
+    chown -R nginxuser:nginx-group /var/cache/nginx && \
+    chown -R nginxuser:nginx-group /var/log/nginx && \
+    chown -R nginxuser:nginx-group /etc/nginx/conf.d
 
 # Touch pid file and change ownership
 RUN touch /var/run/nginx.pid && \
-    chown -R nginxuser:nginx /var/run/nginx.pid
+    chown -R nginxuser:nginx-group /var/run/nginx.pid
 
 # Switch to non-root user
 USER nginxuser
