@@ -83,13 +83,17 @@ router.post('/', async (req, res) => {
     const vote = new Vote({
       createdBy: username,
       selectedBands: selectedBands,
-      status: 'active'
+      status: 'active',
     });
 
     await vote.save();
     await vote.populate('selectedBands');
-
+    
     res.status(201).json(vote);
+
+    console.log("Vote created:", vote);
+    console.log("Voter:", username);
+
   } catch (error) {
     console.error('Error creating vote:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -99,8 +103,8 @@ router.post('/', async (req, res) => {
 // Submit a vote (other users vote for 1 of the 3 bands)
 router.post('/:id/submit', async (req, res) => {
   try {
-    const { bandId, username } = req.body;
-    const vote = await Vote.findById(req.params.id);
+    const { bandIds, username } = req.body;
+    const vote = await Vote.findById(req.params.id).populate('selectedBands');
 
     if (!vote) {
       return res.status(404).json({ error: 'Vote not found' });
@@ -110,36 +114,44 @@ router.post('/:id/submit', async (req, res) => {
       return res.status(400).json({ error: 'Vote is not active' });
     }
 
-    // Validate username
     if (!username || !['Tino', 'Misho', 'Tedak'].includes(username)) {
       return res.status(400).json({ error: 'Invalid username' });
     }
 
-    // Check if user already voted
-    const existingVote = vote.votes.find(v => v.userId === username);
-    if (existingVote) {
-      return res.status(400).json({ error: 'You have already voted' });
+    // Check if user already voted for 2 bands
+    const userVotes = vote.votes.filter(v => v.userId === username).map(v => v.bandId.toString());
+    //const uniqueNewBandIds = bandIds.filter(bandId => !userVotes.includes(bandId));
+    if (userVotes.length + bandIds.length > 2) {
+      return res.status(400).json({ error: 'You can vote for up to 2 bands' });
+    }
+    // Validate and add each bandId
+    if (!bandIds || bandIds.length !== 1) {
+      return res.status(400).json({ error: 'You must select exactly 2 bands' });
     }
 
-    // Validate band is one of the options
-    const validBand = vote.selectedBands.some(b => b.toString() === bandId);
-    if (!validBand) {
-      return res.status(400).json({ error: 'Invalid band selection' });
-    }
-
-    // Add the vote
+    // Replace the vote adding section with:
+for (const bandId of bandIds) {
+  const validBand = vote.selectedBands.some(b => b._id.toString() === bandId);
+  if (!validBand) {
+    return res.status(400).json({ error: 'Invalid band selection' });
+  }
+  
+  // Check if already voted for this band
+  const alreadyVoted = userVotes.some(v => v.bandId.toString() === bandId);
+  if (!alreadyVoted) {
     vote.votes.push({
       userId: username,
       bandId: bandId
     });
+  }
+}
 
     await vote.save();
 
-    // Check if all 3 users have voted
+    // If all users voted for 2 bands each (6 votes), process results
     if (vote.votes.length === 3) {
       await processVoteResults(vote);
     }
-
     await vote.populate('selectedBands');
     await vote.populate('winner');
 
@@ -223,19 +235,40 @@ router.post('/:id/rating', async (req, res) => {
 
 // Process vote results when all users have voted
 async function processVoteResults(vote) {
-  // Count votes for each band
+  console.log('Starting vote processing...'); // Log start
+  console.log('Current votes:', vote.votes); // Log all votes
+
   const voteCount = {};
 
+  // Log selected bands
+  console.log('Selected bands:', vote.selectedBands.map(b => ({
+    id: b._id.toString(),
+    name: b.name
+  })));
+
+  // Initialize vote count for all selected bands to 0
+  vote.selectedBands.forEach(band => {
+    voteCount[band._id.toString()] = 0;
+  });
+
+  console.log('Initial vote counts:', voteCount); // Log initial counts
+
+  // Count each vote
   vote.votes.forEach(v => {
     const bandId = v.bandId.toString();
     voteCount[bandId] = (voteCount[bandId] || 0) + 1;
+    console.log(`Adding vote for band ${bandId} by user ${v.userId}`); // Log each vote count
   });
+
+  console.log('Final vote counts:', voteCount); // Log final counts
 
   // Store results
   vote.results = Object.entries(voteCount).map(([bandId, count]) => ({
-    bandId,
+    bandId: bandId,
     voteCount: count
   }));
+
+  console.log('Vote results:', vote.results); // Log results array
 
   // Find winner(s)
   const maxVotes = Math.max(...Object.values(voteCount));
@@ -243,26 +276,23 @@ async function processVoteResults(vote) {
     .filter(([_, count]) => count === maxVotes)
     .map(([bandId]) => bandId);
 
+  console.log('Max votes:', maxVotes); // Log max votes
+  console.log('Winners:', winners); // Log winners
+
   if (winners.length === 1) {
-    // Clear winner - move to rating phase
+    console.log(`Single winner found: ${winners[0]}`); // Log single winner
     vote.winner = winners[0];
-    vote.status = 'rating';  // Move to rating phase instead of completed
+    vote.status = 'completed';
+    vote.completedAt = new Date();
   } else {
-    // Tie - create a new vote with the same bands
-    vote.status = 'tied';
+    console.log(`Tie between ${winners.length} bands`); // Log tie situation
+    vote.status = 'completed'; // End vote if tie
     vote.completedAt = new Date();
 
-    // Create a new vote with the same bands
-    const newVote = new Vote({
-      createdBy: vote.createdBy,
-      selectedBands: vote.selectedBands,
-      status: 'active'
-    });
-
-    await newVote.save();
   }
 
   await vote.save();
+  return vote;
 }
 
 module.exports = router;

@@ -88,46 +88,40 @@ const VoteComponent: React.FC = () => {
   };
 
   const submitVote = async (voteId: string) => {
-    if (votingBands.length === 0) {
-      showToast('Please select at least one band', 'error');
-      return;
-    }
-    if (votingBands.length > 3) {
-      showToast('You can select maximum 3 bands', 'error');
-      return;
-    }
+  if (votingBands.length === 0) {
+    showToast('Please select at least one band', 'error');
+    return;
+  }
+  if (votingBands.length > 1) {
+    showToast('You can select maximum 1 bands', 'error');
+    return;
+  }
 
-    setSubmitting(true);
-    try {
-      // Submit vote for each selected band
-      // In a real implementation, you might want to batch these or update the API to accept multiple bands
-      let updatedVote: Vote | null = null;
-      for (const bandId of votingBands) {
-        const response = await voteAPI.submitVote(voteId, bandId, user?.username);
-        updatedVote = response.data;
-      }
+  setSubmitting(true);
+  try {
+    // Submit all selected bands in a single request
+    const response = await voteAPI.submitVoteMultiple(voteId, votingBands, user?.username);
+    const updatedVote = response.data;
 
-      if (updatedVote) {
-        const updatedVotes = votes.map(v => v._id === voteId ? updatedVote! : v);
-        setVotes(updatedVotes);
-        setSelectedVote(updatedVote);
-        setVotingBands([]);
-        showToast(`Your votes (${votingBands.length} bands) have been submitted!`, 'success');
-      }
-    } catch (error: any) {
-      showToast(error.response?.data?.error || 'Failed to submit vote', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    const updatedVotes = votes.map(v => v._id === voteId ? updatedVote : v);
+    setVotes(updatedVotes);
+    setSelectedVote(updatedVote);
+    setVotingBands([]);
+    showToast(`Your votes (${votingBands.length} bands) have been submitted!`, 'success');
+  } catch (error: any) {
+    showToast(error.response?.data?.error || 'Failed to submit vote', 'error');
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const toggleVotingBand = (bandId: string) => {
     if (votingBands.includes(bandId)) {
       setVotingBands(votingBands.filter(id => id !== bandId));
-    } else if (votingBands.length < 3) {
+    } else if (votingBands.length < 1) {
       setVotingBands([...votingBands, bandId]);
     } else {
-      showToast('You can select up to 3 bands', 'info');
+      showToast('You can select up to 1 bands', 'info');
     }
   };
 
@@ -334,7 +328,7 @@ const VoteComponent: React.FC = () => {
                           Created by <strong>{vote.createdBy}</strong> •
                           {isCompleted && <span style={{ color: '#28a745' }}> Completed</span>}
                           {isRating && <span style={{ color: '#9333ea' }}> Rating Phase</span>}
-                          {isActive && <span> {vote.votes.length} / 3 votes</span>}
+                          {isActive &&  <span> {new Set(vote.votes.map(v => v.userId)).size} / 3 members voted</span>}
                         </p>
 
                         {/* Band Preview */}
@@ -444,9 +438,6 @@ const VoteComponent: React.FC = () => {
                   <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.8rem', fontWeight: '700' }}>
                     🎯 Cast Your Votes
                   </h3>
-                  <p style={{ margin: '0 0 1rem 0', opacity: 0.95, fontSize: '1.1rem' }}>
-                    Select up to 3 bands you want to vote for
-                  </p>
                   <div style={{
                     background: 'rgba(255, 255, 255, 0.2)',
                     borderRadius: '12px',
@@ -455,7 +446,7 @@ const VoteComponent: React.FC = () => {
                     fontSize: '1.2rem',
                     fontWeight: '600'
                   }}>
-                    Selected: {votingBands.length} / 3
+                    Selected: {votingBands.length} / 1 band
                   </div>
                 </div>
 
@@ -632,7 +623,6 @@ const VoteComponent: React.FC = () => {
                           color: isSelected ? '#059669' : '#94a3b8',
                           textAlign: 'center'
                         }}>
-                          {isSelected ? 'Click again to deselect' : `Add to your ${votingBands.length}/3 votes`}
                         </p>
                       </div>
                     </div>
@@ -646,7 +636,7 @@ const VoteComponent: React.FC = () => {
                   padding: '2rem 0'
                 }}>
                   <button
-                    onClick={() => submitVote(selectedVote._id)}
+                    onClick={() => submitVote   (selectedVote._id)}
                     disabled={votingBands.length === 0 || submitting}
                     style={{
                       padding: '16px 48px',
@@ -711,7 +701,7 @@ const VoteComponent: React.FC = () => {
                       color: '#64748b'
                     }}>
                       You have selected {votingBands.length} band{votingBands.length > 1 ? 's' : ''}.
-                      You can select up to {3 - votingBands.length} more.
+                      You can select up to {2 - votingBands.length} more.
                     </p>
                   )}
                 </div>
@@ -779,7 +769,7 @@ const VoteComponent: React.FC = () => {
                     📊 Vote Results
                   </h3>
                   <p style={{ margin: 0, color: '#64748b', fontSize: '1.1rem' }}>
-                    {selectedVote.votes.length} out of 3 members have voted
+                    {new Set(selectedVote.votes.map(v => v.userId)).size} out of 3 members have voted
                   </p>
                 </div>
 
@@ -928,7 +918,7 @@ const VoteComponent: React.FC = () => {
                                   fontSize: '1rem',
                                   fontWeight: '700'
                                 }}>
-                                  {band.voteCount} / {selectedVote.votes.length}
+                                  {band.voteCount} Vote{band.voteCount !== 1 ? 's' : ''}
                                 </span>
                               </div>
 

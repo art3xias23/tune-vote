@@ -31,12 +31,17 @@ export const voteAPI = {
   getActive: () => api.get<Vote | null>('/api/votes/active'),
   create: (selectedBands: string[], username?: string) =>
     api.post<Vote>('/api/votes', { selectedBands, username: username || localStorage.getItem('selectedUser') }),
-  submitVote: (voteId: string, bandId: string, username?: string) =>
-    api.post(`/api/votes/${voteId}/submit`, { bandId, username: username || localStorage.getItem('selectedUser') }),
+  // submitVote: (voteId: string, bandId: string, username?: string) =>
+  //   api.post(`/api/votes/${voteId}/submit`, { bandId, username: username || localStorage.getItem('selectedUser') }),
   submitRating: (voteId: string, score: number, username?: string) =>
     api.post(`/api/votes/${voteId}/rating`, { score, username: username || localStorage.getItem('selectedUser') }),
   getById: (id: string) => api.get<Vote>(`/api/votes/${id}`),
   deleteVote: (id: string) => api.delete(`/api/votes/${id}`),
+  submitVoteMultiple: (voteId: string, bandIds: string[], username?: string) =>
+    api.post(`/api/votes/${voteId}/submit`, {
+      bandIds,
+      username: username || localStorage.getItem('selectedUser')
+    }),
 };
 
 export const groupAPI = {

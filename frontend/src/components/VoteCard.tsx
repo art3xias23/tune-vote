@@ -35,7 +35,7 @@ const VoteCard: React.FC<VoteCardProps> = ({ vote, currentUser, onVoteUpdate, on
       // Submit each band selection (in the future, this could be batch submission)
       // For now, we'll submit the first selected band as the API expects a single bandId
       const bandIdToSubmit = selectedBands[0]; // API currently expects single bandId
-      const response = await voteAPI.submitVote(vote._id, bandIdToSubmit);
+      const response = await voteAPI.submitVoteMultiple(vote._id, [bandIdToSubmit]);
       onVoteUpdate(response.data);
       setSelectedBands([]);
     } catch (error: any) {

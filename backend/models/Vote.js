@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const voteSchema = new mongoose.Schema({
   voteNumber: {
     type: Number,
-    unique: true
+    requred: true
   },
   status: {
     type: String,
@@ -80,6 +80,16 @@ voteSchema.pre('save', async function(next) {
     const lastVote = await mongoose.model('Vote').findOne().sort({ voteNumber: -1 });
     this.voteNumber = lastVote ? lastVote.voteNumber + 1 : 1;
   }
+
+  // Validate one vote per user
+  const userVotes = {};
+  this.votes.forEach(vote => {
+    if (userVotes[vote.userId]) {
+      throw new Error(`User ${vote.userId} has already voted`);
+    }
+    userVotes[vote.userId] = true;
+  });
+
   next();
 });
 
