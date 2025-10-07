@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Band, Vote, Group } from '../types';
+import { Band, Vote } from '../types';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -44,19 +44,5 @@ export const voteAPI = {
     }),
 };
 
-export const groupAPI = {
-  getAll: () => api.get<Group[]>('/groups'),
-  create: (data: { name: string; description?: string }) =>
-    api.post<Group>('/groups', data),
-  getById: (id: string) => api.get<Group>(`/groups/${id}`),
-  delete: (id: string) => api.delete(`/groups/${id}`),
-};
-
-export const authAPI = {
-  login: (username: string) => api.post('/auth/login', { username }),
-  logout: () => api.post('/auth/logout'),
-  selectGroup: (userId: string, groupId: string) =>
-    api.post('/auth/select-group', { userId, groupId }),
-};
 
 export default api;

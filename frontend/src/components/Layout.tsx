@@ -179,7 +179,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex justify-center items-center space-x-6 text-sm text-slate-500 dark:text-slate-400">
             <span className="flex items-center space-x-2">
               <span>🎵</span>
-              <span>Powered by TuneSquad</span>
+              <span>Powered by PragmatinoSoft</span>
             </span>
             <span>•</span>
             <span>Music Discovery & Voting</span>
