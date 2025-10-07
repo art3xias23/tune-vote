@@ -108,18 +108,29 @@ const SearchBands: React.FC = () => {
                 >
                   <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                     <img
-                      src={result.image}
+                      src={result.image || '/default-band.png'}
                       alt={result.name}
                       style={{
                         width: '120px',
                         height: '120px',
                         borderRadius: '8px',
                         objectFit: 'cover',
-                        flexShrink: 0
+                        flexShrink: 0,
+                        backgroundColor: '#f3f4f6',
+                        transition: 'opacity 0.3s ease'
                       }}
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/default-band.png';
+                        const img = e.target as HTMLImageElement;
+                        // Use a simple data URL as fallback to avoid 404 errors
+                        const fallbackSrc = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTIwIiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik00MCA2MEg4MEw2MCA0MEg0MFY2MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTQwIDgwSDYwVjYwSDQwVjgwWiIgZmlsbD0iIzlDQTNBRiIvPgo8cGF0aCBkPSJNNjAgODBIODBWNjBINjBWODBaIiBmaWxsPSIjOUNBM0FGIi8+Cjx0ZXh0IHg9IjYwIiB5PSIxMDAiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzlDQTNBRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+4pmrPC90ZXh0Pgo8L3N2Zz4K';
+                        if (img.src !== fallbackSrc) {
+                          img.src = fallbackSrc;
+                        }
                       }}
+                      onLoad={(e) => {
+                        (e.target as HTMLImageElement).style.opacity = '1';
+                      }}
+                      loading="lazy"
                     />
                     <div style={{ flex: 1 }}>
                       <h4 className="m-0 mb-2 text-xl text-slate-900 dark:text-slate-100 font-semibold">
