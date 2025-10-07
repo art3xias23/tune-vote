@@ -88,32 +88,32 @@ const VoteComponent: React.FC = () => {
   };
 
   const submitVote = async (voteId: string) => {
-  if (votingBands.length === 0) {
-    showToast('Please select at least one band', 'error');
-    return;
-  }
-  if (votingBands.length > 1) {
-    showToast('You can select maximum 1 bands', 'error');
-    return;
-  }
+    if (votingBands.length === 0) {
+      showToast('Please select at least one band', 'error');
+      return;
+    }
+    if (votingBands.length > 1) {
+      showToast('You can select maximum 1 bands', 'error');
+      return;
+    }
 
-  setSubmitting(true);
-  try {
-    // Submit all selected bands in a single request
-    const response = await voteAPI.submitVoteMultiple(voteId, votingBands, user?.username);
-    const updatedVote = response.data;
+    setSubmitting(true);
+    try {
+      // Submit all selected bands in a single request
+      const response = await voteAPI.submitVoteMultiple(voteId, votingBands, user?.username);
+      const updatedVote = response.data;
 
-    const updatedVotes = votes.map(v => v._id === voteId ? updatedVote : v);
-    setVotes(updatedVotes);
-    setSelectedVote(updatedVote);
-    setVotingBands([]);
-    showToast(`Your votes (${votingBands.length} bands) have been submitted!`, 'success');
-  } catch (error: any) {
-    showToast(error.response?.data?.error || 'Failed to submit vote', 'error');
-  } finally {
-    setSubmitting(false);
-  }
-};
+      const updatedVotes = votes.map(v => v._id === voteId ? updatedVote : v);
+      setVotes(updatedVotes);
+      setSelectedVote(updatedVote);
+      setVotingBands([]);
+      showToast(`Your votes (${votingBands.length} bands) have been submitted!`, 'success');
+    } catch (error: any) {
+      showToast(error.response?.data?.error || 'Failed to submit vote', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const toggleVotingBand = (bandId: string) => {
     if (votingBands.includes(bandId)) {
@@ -175,8 +175,8 @@ const VoteComponent: React.FC = () => {
   return (
     <Layout>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h2>Voting System</h2>
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <h2 className="text-slate-900 dark:text-slate-100 text-2xl font-bold mb-4">Voting System</h2>
           <button
             onClick={() => setShowCreateForm(!showCreateForm)}
             style={{
@@ -196,28 +196,14 @@ const VoteComponent: React.FC = () => {
 
         {/* CREATE VOTE FORM */}
         {showCreateForm && (
-          <div style={{
-            backgroundColor: 'white',
-            padding: '2rem',
-            borderRadius: '12px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-            marginBottom: '2rem'
-          }}>
-            <h3>Create a New Vote</h3>
-            <p style={{ color: '#666', marginBottom: '1.5rem' }}>
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg dark:shadow-gray-900/20 mb-8 border border-gray-200 dark:border-gray-700">
+            <h3 className="text-slate-900 dark:text-slate-100 text-xl font-semibold mb-2">Create a New Vote</h3>
+            <p className="text-slate-600 dark:text-slate-400 mb-6">
               Select 3 bands for everyone to vote on
             </p>
 
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '2rem',
-              padding: '1rem',
-              backgroundColor: '#f5f5f5',
-              borderRadius: '8px'
-            }}>
-              <span style={{ fontWeight: '600' }}>
+            <div className="flex justify-between items-center mb-8 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg">
+              <span className="font-semibold text-slate-900 dark:text-slate-100">
                 Selected: {selectedBands.length} / 3 bands
               </span>
               <button
@@ -287,16 +273,9 @@ const VoteComponent: React.FC = () => {
 
         {/* VOTES LIST */}
         <div style={{ marginBottom: '2rem' }}>
-          <h3 style={{ marginBottom: '1rem' }}>All Votes</h3>
-
           {votes.length === 0 ? (
-            <div style={{
-              backgroundColor: '#f5f5f5',
-              padding: '2rem',
-              borderRadius: '12px',
-              textAlign: 'center'
-            }}>
-              <p>No votes yet. Create one to get started!</p>
+            <div className="bg-gray-100 dark:bg-gray-800 p-8 rounded-xl text-center border border-gray-200 dark:border-gray-700">
+              <p className="text-slate-600 dark:text-slate-400">No votes yet. Create one to get started!</p>
             </div>
           ) : (
             <div style={{ display: 'grid', gap: '1rem' }}>
@@ -308,27 +287,20 @@ const VoteComponent: React.FC = () => {
                 return (
                   <div
                     key={vote._id}
-                    style={{
-                      backgroundColor: 'white',
-                      padding: '1.5rem',
-                      borderRadius: '12px',
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-                      border: selectedVote?._id === vote._id ? '2px solid #1db954' : '2px solid transparent',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
+                    className={`bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md dark:shadow-gray-900/20 border-2 transition-all cursor-pointer ${selectedVote?._id === vote._id ? 'border-green-500' : 'border-transparent dark:border-gray-700'
+                      }`}
                     onClick={() => setSelectedVote(vote)}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                       <div>
-                        <h4 style={{ marginBottom: '0.5rem' }}>
+                        <h4 className="mb-2 text-slate-900 dark:text-slate-100 font-semibold">
                           Vote #{vote.voteNumber || votes.indexOf(vote) + 1}
                         </h4>
-                        <p style={{ color: '#666', fontSize: '14px' }}>
+                        <p className="text-slate-600 dark:text-slate-400 text-sm">
                           Created by <strong>{vote.createdBy}</strong> •
                           {isCompleted && <span style={{ color: '#28a745' }}> Completed</span>}
                           {isRating && <span style={{ color: '#9333ea' }}> Rating Phase</span>}
-                          {isActive &&  <span> {new Set(vote.votes.map(v => v.userId)).size} / 3 members voted</span>}
+                          {isActive && <span> {new Set(vote.votes.map(v => v.userId)).size} / 3 members voted</span>}
                         </p>
 
                         {/* Band Preview */}
@@ -348,7 +320,7 @@ const VoteComponent: React.FC = () => {
                                   (e.target as HTMLImageElement).src = '/default-band.png';
                                 }}
                               />
-                              <div style={{ fontSize: '12px', marginTop: '4px' }}>{band.name}</div>
+                              <div className="text-xs mt-1 text-slate-700 dark:text-slate-300">{band.name}</div>
                             </div>
                           ))}
                         </div>
@@ -400,14 +372,9 @@ const VoteComponent: React.FC = () => {
 
         {/* SELECTED VOTE DETAILS */}
         {selectedVote && (
-          <div style={{
-            backgroundColor: 'white',
-            padding: '2rem',
-            borderRadius: '12px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-          }}>
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg dark:shadow-gray-900/20 border border-gray-200 dark:border-gray-700">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-              <h3>Vote Details</h3>
+              <h3 className="text-slate-900 dark:text-slate-100 text-xl font-semibold">Vote Details</h3>
               <button
                 onClick={() => setSelectedVote(null)}
                 style={{
@@ -494,138 +461,138 @@ const VoteComponent: React.FC = () => {
                           }
                         }}
                       >
-                      {/* Number Badge or Check Mark */}
-                      <div style={{
-                        position: 'absolute',
-                        top: '15px',
-                        left: '15px',
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '50%',
-                        background: isSelected
-                          ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
-                          : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontWeight: 'bold',
-                        fontSize: '1.2rem',
-                        zIndex: 1,
-                        boxShadow: isSelected
-                          ? '0 4px 10px rgba(16, 185, 129, 0.3)'
-                          : '0 4px 10px rgba(102, 126, 234, 0.3)',
-                        transition: 'all 0.3s ease'
-                      }}>
-                        {isSelected ? '✓' : index + 1}
-                      </div>
-
-                      {/* Selection Indicator Overlay */}
-                      {isSelected && (
+                        {/* Number Badge or Check Mark */}
                         <div style={{
                           position: 'absolute',
                           top: '15px',
-                          right: '15px',
-                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          left: '15px',
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          background: isSelected
+                            ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           color: 'white',
-                          padding: '4px 12px',
-                          borderRadius: '20px',
-                          fontSize: '0.85rem',
-                          fontWeight: '600',
+                          fontWeight: 'bold',
+                          fontSize: '1.2rem',
                           zIndex: 1,
-                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
+                          boxShadow: isSelected
+                            ? '0 4px 10px rgba(16, 185, 129, 0.3)'
+                            : '0 4px 10px rgba(102, 126, 234, 0.3)',
+                          transition: 'all 0.3s ease'
                         }}>
-                          Selected {votingBands.indexOf(band._id) + 1}
+                          {isSelected ? '✓' : index + 1}
                         </div>
-                      )}
 
-                      {/* Band Image */}
-                      <div style={{
-                        position: 'relative',
-                        width: '100%',
-                        paddingBottom: '100%',
-                        overflow: 'hidden',
-                        background: 'linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.7) 100%)'
-                      }}>
-                        <img
-                          src={band.image}
-                          alt={band.name}
-                          style={{
+                        {/* Selection Indicator Overlay */}
+                        {isSelected && (
+                          <div style={{
                             position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            transition: 'transform 0.3s ease'
-                          }}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/default-band.png';
-                          }}
-                          onMouseEnter={(e) => {
-                            (e.target as HTMLImageElement).style.transform = 'scale(1.1)';
-                          }}
-                          onMouseLeave={(e) => {
-                            (e.target as HTMLImageElement).style.transform = 'scale(1)';
-                          }}
-                        />
-
-                        {/* Band Name Overlay */}
-                        <div style={{
-                          position: 'absolute',
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          padding: '1.5rem',
-                          background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.8) 100%)'
-                        }}>
-                          <h3 style={{
+                            top: '15px',
+                            right: '15px',
+                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                             color: 'white',
-                            margin: 0,
-                            fontSize: '1.4rem',
-                            fontWeight: '700',
-                            textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            fontSize: '0.85rem',
+                            fontWeight: '600',
+                            zIndex: 1,
+                            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
                           }}>
-                            {band.name}
-                          </h3>
-                        </div>
-                      </div>
+                            Selected {votingBands.indexOf(band._id) + 1}
+                          </div>
+                        )}
 
-                      {/* Selection Status Section */}
-                      <div style={{
-                        padding: '1.5rem',
-                        background: isSelected
-                          ? 'linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%)'
-                          : 'linear-gradient(180deg, #f8f9fa 0%, white 100%)'
-                      }}>
+                        {/* Band Image */}
                         <div style={{
-                          textAlign: 'center',
-                          fontSize: '1.1rem',
-                          fontWeight: '600',
-                          color: isSelected ? '#059669' : '#64748b'
+                          position: 'relative',
+                          width: '100%',
+                          paddingBottom: '100%',
+                          overflow: 'hidden',
+                          background: 'linear-gradient(180deg, transparent 60%, rgba(0,0,0,0.7) 100%)'
                         }}>
-                          {isSelected ? (
-                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '1.3rem' }}>✅</span>
-                              Selected
-                            </span>
-                          ) : (
-                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '1.3rem' }}>⭕</span>
-                              Click to select
-                            </span>
-                          )}
+                          <img
+                            src={band.image}
+                            alt={band.name}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              transition: 'transform 0.3s ease'
+                            }}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/default-band.png';
+                            }}
+                            onMouseEnter={(e) => {
+                              (e.target as HTMLImageElement).style.transform = 'scale(1.1)';
+                            }}
+                            onMouseLeave={(e) => {
+                              (e.target as HTMLImageElement).style.transform = 'scale(1)';
+                            }}
+                          />
+
+                          {/* Band Name Overlay */}
+                          <div style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            right: 0,
+                            padding: '1.5rem',
+                            background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.8) 100%)'
+                          }}>
+                            <h3 style={{
+                              color: 'white',
+                              margin: 0,
+                              fontSize: '1.4rem',
+                              fontWeight: '700',
+                              textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                            }}>
+                              {band.name}
+                            </h3>
+                          </div>
                         </div>
 
-                        <p style={{
-                          margin: '12px 0 0 0',
-                          fontSize: '0.9rem',
-                          color: isSelected ? '#059669' : '#94a3b8',
-                          textAlign: 'center'
+                        {/* Selection Status Section */}
+                        <div style={{
+                          padding: '1.5rem',
+                          background: isSelected
+                            ? 'linear-gradient(180deg, #f0fdf4 0%, #dcfce7 100%)'
+                            : 'linear-gradient(180deg, #f8f9fa 0%, white 100%)'
                         }}>
-                        </p>
+                          <div style={{
+                            textAlign: 'center',
+                            fontSize: '1.1rem',
+                            fontWeight: '600',
+                            color: isSelected ? '#059669' : '#64748b'
+                          }}>
+                            {isSelected ? (
+                              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '1.3rem' }}>✅</span>
+                                Selected
+                              </span>
+                            ) : (
+                              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '1.3rem' }}>⭕</span>
+                                Click to select
+                              </span>
+                            )}
+                          </div>
+
+                          <p style={{
+                            margin: '12px 0 0 0',
+                            fontSize: '0.9rem',
+                            color: isSelected ? '#059669' : '#94a3b8',
+                            textAlign: 'center'
+                          }}>
+                          </p>
+                        </div>
                       </div>
-                    </div>
                     );
                   })}
                 </div>
@@ -636,7 +603,7 @@ const VoteComponent: React.FC = () => {
                   padding: '2rem 0'
                 }}>
                   <button
-                    onClick={() => submitVote   (selectedVote._id)}
+                    onClick={() => submitVote(selectedVote._id)}
                     disabled={votingBands.length === 0 || submitting}
                     style={{
                       padding: '16px 48px',
@@ -831,13 +798,11 @@ const VoteComponent: React.FC = () => {
                             width: '45px',
                             height: '45px',
                             borderRadius: '50%',
-                            background: `linear-gradient(135deg, ${
-                              index === 0 ? '#f97316' :
+                            background: `linear-gradient(135deg, ${index === 0 ? '#f97316' :
                               index === 1 ? '#6b7280' : '#94a3b8'
-                            } 0%, ${
-                              index === 0 ? '#ea580c' :
-                              index === 1 ? '#4b5563' : '#64748b'
-                            } 100%)`,
+                              } 0%, ${index === 0 ? '#ea580c' :
+                                index === 1 ? '#4b5563' : '#64748b'
+                              } 100%)`,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -931,11 +896,9 @@ const VoteComponent: React.FC = () => {
                                 boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
                               }}>
                                 <div style={{
-                                  background: `linear-gradient(90deg, ${
-                                    percentage > 0 ? '#10b981' : '#e5e7eb'
-                                  } 0%, ${
-                                    percentage > 0 ? '#059669' : '#d1d5db'
-                                  } 100%)`,
+                                  background: `linear-gradient(90deg, ${percentage > 0 ? '#10b981' : '#e5e7eb'
+                                    } 0%, ${percentage > 0 ? '#059669' : '#d1d5db'
+                                    } 100%)`,
                                   height: '100%',
                                   width: `${Math.max(percentage, 5)}%`, // Minimum 5% for visibility
                                   transition: 'width 0.6s ease',

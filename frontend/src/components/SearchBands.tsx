@@ -65,37 +65,24 @@ const SearchBands: React.FC = () => {
   return (
     <Layout>
       <div>
-        <h2 style={{ marginBottom: '2rem' }}>Search & Add Bands</h2>
+        <h2 className="text-slate-900 dark:text-slate-100 text-2xl font-bold mb-8">Search & Add Bands</h2>
 
-        <div style={{
-          backgroundColor: 'white',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          marginBottom: '2rem'
-        }}>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg dark:shadow-gray-900/20 mb-8 border border-gray-200 dark:border-gray-700">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Start typing to search for bands on Spotify..."
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '2px solid #1db954',
-              borderRadius: '6px',
-              fontSize: '18px',
-              outline: 'none'
-            }}
+            className="w-full p-3 border-2 border-green-500 dark:border-green-400 rounded-lg text-lg bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-green-500"
             autoFocus
           />
           {searching && (
-            <p style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
+            <p className="mt-2 text-slate-600 dark:text-slate-400 text-sm">
               Searching...
             </p>
           )}
           {!searching && searchQuery.length > 0 && searchQuery.length < 2 && (
-            <p style={{ marginTop: '10px', color: '#999', fontSize: '14px' }}>
+            <p className="mt-2 text-slate-500 dark:text-slate-500 text-sm">
               Type at least 2 characters to search
             </p>
           )}
@@ -103,7 +90,7 @@ const SearchBands: React.FC = () => {
 
         {searchResults.length > 0 && (
           <div>
-            <h3>Search Results ({searchResults.length})</h3>
+            <h3 className="text-slate-900 dark:text-slate-100 text-xl font-semibold mb-4">Search Results ({searchResults.length})</h3>
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
@@ -113,15 +100,11 @@ const SearchBands: React.FC = () => {
               {searchResults.map((result, index) => (
                 <div
                   key={index}
-                  style={{
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '12px',
-                    padding: '1.5rem',
-                    backgroundColor: result.inDatabase ? '#f0f0f0' : 'white',
-                    opacity: result.inDatabase ? 0.7 : 1,
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-                  }}
+                  className={`border rounded-xl p-6 transition-all shadow-md ${
+                    result.inDatabase
+                      ? 'bg-gray-100 dark:bg-gray-700 opacity-70 border-gray-300 dark:border-gray-600'
+                      : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600'
+                  }`}
                 >
                   <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                     <img
@@ -139,7 +122,7 @@ const SearchBands: React.FC = () => {
                       }}
                     />
                     <div style={{ flex: 1 }}>
-                      <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.3rem', color: '#333' }}>
+                      <h4 className="m-0 mb-2 text-xl text-slate-900 dark:text-slate-100 font-semibold">
                         {result.name}
                         {result.inDatabase && (
                           <span style={{
@@ -157,7 +140,7 @@ const SearchBands: React.FC = () => {
                       </h4>
 
                       {result.followers !== undefined && (
-                        <div style={{ display: 'flex', gap: '1.5rem', fontSize: '14px', color: '#666', marginBottom: '0.5rem' }}>
+                        <div className="flex gap-6 text-sm text-slate-600 dark:text-slate-400 mb-2">
                           <span>👥 {result.followers.toLocaleString()} followers</span>
                           {result.popularity !== undefined && (
                             <span>🔥 {result.popularity}% popularity</span>
@@ -195,10 +178,10 @@ const SearchBands: React.FC = () => {
                       paddingTop: '1rem',
                       borderTop: '1px solid #f0f0f0'
                     }}>
-                      <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '13px', color: '#666' }}>
+                      <h5 className="m-0 mb-2 text-xs text-slate-600 dark:text-slate-400 font-medium">
                         Popular Tracks:
                       </h5>
-                      <div style={{ fontSize: '12px', color: '#888' }}>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">
                         {result.topTracks.map((track: any, trackIndex: number) => (
                           <div key={trackIndex} style={{ marginBottom: '4px' }}>
                             🎵 <strong>{track.name}</strong> - {track.album}
@@ -259,17 +242,11 @@ const SearchBands: React.FC = () => {
         )}
 
         {!searching && searchQuery.length >= 2 && searchResults.length === 0 && (
-          <div style={{
-            backgroundColor: 'white',
-            padding: '3rem',
-            borderRadius: '8px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-            textAlign: 'center'
-          }}>
-            <p style={{ fontSize: '18px', color: '#666' }}>
+          <div className="bg-white dark:bg-gray-800 p-12 rounded-xl shadow-lg dark:shadow-gray-900/20 text-center border border-gray-200 dark:border-gray-700">
+            <p className="text-lg text-slate-600 dark:text-slate-400">
               No results found for "{searchQuery}"
             </p>
-            <p style={{ fontSize: '14px', color: '#999', marginTop: '10px' }}>
+            <p className="text-sm text-slate-500 dark:text-slate-500 mt-2">
               Try searching with a different spelling or band name
             </p>
           </div>

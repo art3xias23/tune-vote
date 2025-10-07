@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { UserProvider } from './contexts/UserContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { PrivateRoute } from './components/PrivateRoute';
 import UserSelection from './components/UserSelection';
 import Dashboard from './components/Dashboard';
@@ -13,9 +14,10 @@ import './App.css';
 
 function App() {
   return (
-    <UserProvider>
-      <ToastProvider>
-        <Router>
+    <ThemeProvider>
+      <UserProvider>
+        <ToastProvider>
+          <Router>
           <div className="App">
             <Routes>
             <Route path="/select-user" element={<UserSelection />} />
@@ -62,9 +64,10 @@ function App() {
             <Route path="/" element={<Navigate to="/select-user" replace />} />
           </Routes>
         </div>
-      </Router>
-      </ToastProvider>
-    </UserProvider>
+          </Router>
+        </ToastProvider>
+      </UserProvider>
+    </ThemeProvider>
   );
 }
 

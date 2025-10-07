@@ -10,7 +10,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
 
   }, []);
-  
+
 
   const features = [
     {
@@ -78,8 +78,8 @@ const Dashboard: React.FC = () => {
           {features.map((feature, index) => (
             <div
               key={feature.title}
-              className="bg-gradient-card backdrop-blur-sm rounded-2xl p-6 shadow-large
-                       border border-white/20 hover:shadow-large transition-all duration-500
+              className="bg-white dark:bg-gray-800 backdrop-blur-sm rounded-2xl p-6 shadow-large
+                       border border-white/20 dark:border-gray-700/20 hover:shadow-large transition-all duration-500
                        transform hover:-translate-y-2 animate-slide-up"
               style={{ animationDelay: `${index * 200}ms` }}
             >
@@ -87,68 +87,12 @@ const Dashboard: React.FC = () => {
                             flex items-center justify-center ${feature.shadowColor} mb-4`}>
                 <span className="text-3xl">{feature.icon}</span>
               </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">{feature.title}</h3>
-              <p className="text-slate-600 leading-relaxed">{feature.description}</p>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-2">{feature.title}</h3>
+              <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{feature.description}</p>
             </div>
           ))}
         </div>
 
-        <div className="bg-gradient-card backdrop-blur-sm rounded-2xl p-8 shadow-large
-                      border border-white/20 text-center animate-scale-in">
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800 mb-3">Ready to Get Started?</h2>
-              <p className="text-slate-600 max-w-lg mx-auto">
-                Jump into the voting experience or explore our music database to discover new sounds
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-              <button
-                onClick={() => navigate('/vote')}
-                className="bg-gradient-vote hover:shadow-vote text-white px-8 py-4 rounded-xl
-                         font-bold text-lg transition-all duration-300 transform hover:-translate-y-1
-                         shadow-medium hover:shadow-large flex items-center justify-center space-x-3"
-              >
-                <span className="text-2xl">🗳️</span>
-                <span>Start Voting</span>
-                <span className="text-sm opacity-75">→</span>
-              </button>
-              <button
-                onClick={() => navigate('/database')}
-                className="bg-gradient-music hover:shadow-glow text-white px-8 py-4 rounded-xl
-                         font-bold text-lg transition-all duration-300 transform hover:-translate-y-1
-                         shadow-medium hover:shadow-large flex items-center justify-center space-x-3"
-              >
-                <span className="text-2xl">🎵</span>
-                <span>Browse Music</span>
-                <span className="text-sm opacity-75">→</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-r from-slate-50 to-blue-50 backdrop-blur-sm rounded-2xl p-6
-                      border border-white/20 shadow-soft">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center shadow-medium">
-                <span className="text-xl">⏱️</span>
-              </div>
-              <div>
-                <div className="text-sm font-medium text-slate-600">Auto-redirect</div>
-                <div className="text-lg font-bold text-slate-800">Taking you to voting in 3 seconds</div>
-              </div>
-            </div>
-            <button
-              onClick={() => navigate('/vote')}
-              className="text-primary-600 hover:text-primary-700 font-medium text-sm
-                       hover:underline transition-colors"
-            >
-              Skip wait →
-            </button>
-          </div>
-        </div>
       </div>
     </Layout>
   );

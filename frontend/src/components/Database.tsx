@@ -53,42 +53,24 @@ const Database: React.FC = () => {
   return (
     <Layout>
       <div>
-        <h2 style={{ marginBottom: '2rem' }}>Band Database</h2>
+        <h2 className="text-slate-900 dark:text-slate-100 text-2xl font-bold mb-8">Band Database</h2>
 
-        <div style={{
-          backgroundColor: 'white',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          marginBottom: '2rem'
-        }}>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg dark:shadow-gray-900/20 mb-8 border border-gray-200 dark:border-gray-700">
           <input
             type="text"
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
             placeholder="Filter bands in database..."
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '16px'
-            }}
+            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg text-base bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
         </div>
 
         <div>
-          <h3>Bands in Database ({filteredBands.length})</h3>
+          <h3 className="text-slate-900 dark:text-slate-100 text-xl font-semibold mb-4">Bands in Database ({filteredBands.length})</h3>
           {filteredBands.length === 0 ? (
-            <div style={{
-              backgroundColor: 'white',
-              padding: '2rem',
-              borderRadius: '8px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-              textAlign: 'center'
-            }}>
-              <p>{filterQuery ? `No bands matching "${filterQuery}"` : 'No bands in database yet. Go to Search to add some!'}</p>
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg dark:shadow-gray-900/20 text-center border border-gray-200 dark:border-gray-700">
+              <p className="text-slate-600 dark:text-slate-400">{filterQuery ? `No bands matching "${filterQuery}"` : 'No bands in database yet. Go to Search to add some!'}</p>
             </div>
           ) : (
             <div style={{
@@ -99,14 +81,7 @@ const Database: React.FC = () => {
               {filteredBands.map((band) => (
                 <div
                   key={band._id}
-                  style={{
-                    backgroundColor: 'white',
-                    padding: '1rem',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                    textAlign: 'center',
-                    position: 'relative'
-                  }}
+                  className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg dark:shadow-gray-900/20 text-center relative border border-gray-200 dark:border-gray-700"
                 >
                   {/* Delete Button */}
                   <button
@@ -144,8 +119,8 @@ const Database: React.FC = () => {
                       (e.target as HTMLImageElement).src = '/default-band.png';
                     }}
                   />
-                  <h4 style={{ margin: '0.5rem 0' }}>{band.name}</h4>
-                  <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>
+                  <h4 className="my-2 text-slate-900 dark:text-slate-100 font-semibold">{band.name}</h4>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 m-0">
                     {band.addedBy && (
                       <span>Added by <strong>{band.addedBy}</strong> • </span>
                     )}

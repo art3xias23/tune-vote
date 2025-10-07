@@ -85,7 +85,7 @@ const MyRatings: React.FC = () => {
   return (
     <Layout>
       <div>
-        <h2 style={{ marginBottom: '2rem' }}>My Ratings</h2>
+        <h2 className="text-slate-900 dark:text-slate-100 text-2xl font-bold mb-8">My Ratings</h2>
 
         {/* Stats Section */}
         <div style={{
@@ -94,79 +94,43 @@ const MyRatings: React.FC = () => {
           gap: '1rem',
           marginBottom: '2rem'
         }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '1.5rem',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-            textAlign: 'center'
-          }}>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg dark:shadow-gray-900/20 text-center border border-gray-200 dark:border-gray-700">
             <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#1db954' }}>
               {ratedBands.length}
             </div>
-            <div style={{ color: '#666', fontSize: '14px' }}>Total Bands Rated</div>
+            <div className="text-slate-600 dark:text-slate-400 text-sm">Total Bands Rated</div>
           </div>
 
-          <div style={{
-            backgroundColor: 'white',
-            padding: '1.5rem',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-            textAlign: 'center'
-          }}>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg dark:shadow-gray-900/20 text-center border border-gray-200 dark:border-gray-700">
             <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#3b82f6' }}>
               {getAverageRating()}
             </div>
-            <div style={{ color: '#666', fontSize: '14px' }}>Average Rating</div>
+            <div className="text-slate-600 dark:text-slate-400 text-sm">Average Rating</div>
           </div>
 
-          <div style={{
-            backgroundColor: 'white',
-            padding: '1.5rem',
-            borderRadius: '12px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-            textAlign: 'center'
-          }}>
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg dark:shadow-gray-900/20 text-center border border-gray-200 dark:border-gray-700">
             <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#f59e0b' }}>
               {ratedBands.filter(r => r.rating >= 8).length}
             </div>
-            <div style={{ color: '#666', fontSize: '14px' }}>Highly Rated (8+)</div>
+            <div className="text-slate-600 dark:text-slate-400 text-sm">Highly Rated (8+)</div>
           </div>
         </div>
 
         {/* Filter */}
-        <div style={{
-          backgroundColor: 'white',
-          padding: '1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          marginBottom: '2rem'
-        }}>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg dark:shadow-gray-900/20 mb-8 border border-gray-200 dark:border-gray-700">
           <input
             type="text"
             value={filterQuery}
             onChange={(e) => setFilterQuery(e.target.value)}
             placeholder="Search your rated bands..."
-            style={{
-              width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '6px',
-              fontSize: '16px'
-            }}
+            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg text-base bg-white dark:bg-gray-700 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
         {/* Ratings List */}
         {filteredBands.length === 0 ? (
-          <div style={{
-            backgroundColor: 'white',
-            padding: '3rem',
-            borderRadius: '12px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-            textAlign: 'center'
-          }}>
-            <p style={{ fontSize: '18px', color: '#666' }}>
+          <div className="bg-white dark:bg-gray-800 p-12 rounded-xl shadow-lg dark:shadow-gray-900/20 text-center border border-gray-200 dark:border-gray-700">
+            <p className="text-lg text-slate-600 dark:text-slate-400">
               {filterQuery
                 ? `No rated bands matching "${filterQuery}"`
                 : "You haven't rated any bands yet"}
@@ -180,13 +144,7 @@ const MyRatings: React.FC = () => {
             {filteredBands.map((item, index) => (
               <div
                 key={`${item.band._id}-${index}`}
-                style={{
-                  backgroundColor: 'white',
-                  borderRadius: '12px',
-                  padding: '1.5rem',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                  transition: 'transform 0.2s, box-shadow 0.2s'
-                }}
+                className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg dark:shadow-gray-900/20 transition-all border border-gray-200 dark:border-gray-700 hover:transform hover:-translate-y-1 hover:shadow-xl dark:hover:shadow-gray-900/30"
                 onMouseEnter={(e) => {
                   e.currentTarget.style.transform = 'translateY(-2px)';
                   e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
@@ -212,10 +170,10 @@ const MyRatings: React.FC = () => {
                   />
 
                   <div style={{ flex: 1 }}>
-                    <h4 style={{ margin: '0 0 8px 0', fontSize: '1.2rem' }}>
+                    <h4 className="m-0 mb-2 text-xl text-slate-900 dark:text-slate-100 font-semibold">
                       {item.band.name}
                     </h4>
-                    <div style={{ display: 'flex', gap: '1rem', fontSize: '14px', color: '#666' }}>
+                    <div className="flex gap-4 text-sm text-slate-600 dark:text-slate-400">
                       <span>Vote #{item.voteNumber}</span>
                       <span>•</span>
                       <span>{new Date(item.voteDate).toLocaleDateString()}</span>
@@ -236,7 +194,7 @@ const MyRatings: React.FC = () => {
                     }}>
                       {item.rating}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>/ 10</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-500">/ 10</div>
                     <div style={{
                       display: 'flex',
                       gap: '2px',

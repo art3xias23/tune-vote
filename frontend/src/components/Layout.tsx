@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
+import ThemeToggle from './ThemeToggle';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -13,8 +14,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-      <header className="backdrop-blur-sm bg-white/90 shadow-soft border-b border-white/20 sticky top-0 z-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-gray-900 dark:via-slate-900 dark:to-gray-800">
+      <header className="backdrop-blur-sm bg-white/90 dark:bg-gray-800/90 shadow-soft border-b border-white/20 dark:border-gray-700/20 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-6">
@@ -26,7 +27,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <h1 className="text-2xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                     Tune Vote
                   </h1>
-                  <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wide">
                     Music Discovery Platform
                   </span>
                 </div>
@@ -40,15 +41,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
 
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3 bg-white/60 backdrop-blur-sm rounded-xl px-4 py-2 shadow-soft border border-white/20">
+              <ThemeToggle />
+              <div className="flex items-center space-x-3 bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm rounded-xl px-4 py-2 shadow-soft border border-white/20 dark:border-gray-600/20">
                 <div className="w-8 h-8 bg-gradient-to-br from-primary-400 to-primary-600 rounded-lg flex items-center justify-center shadow-soft">
                   <span className="text-lg">{user?.avatar}</span>
                 </div>
                 <div className="hidden sm:block">
-                  <div className="text-sm font-semibold text-slate-800">
+                  <div className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                     {user?.name}
                   </div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
                     {user?.isAdmin ? 'Administrator' : 'Member'}
                   </div>
                 </div>
@@ -61,9 +63,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <button
                 onClick={logout}
                 className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900
-                          bg-white/60 hover:bg-white/80 backdrop-blur-sm border border-white/20
-                          hover:border-slate-200 rounded-lg transition-all duration-200
-                          shadow-soft hover:shadow-medium"
+                          dark:text-slate-300 dark:hover:text-slate-100
+                          bg-white/60 hover:bg-white/80 dark:bg-gray-700/60 dark:hover:bg-gray-700/80
+                          backdrop-blur-sm border border-white/20 dark:border-gray-600/20
+                          hover:border-slate-200 dark:hover:border-gray-500
+                          rounded-lg transition-all duration-200 shadow-soft hover:shadow-medium"
               >
                 Switch User
               </button>
@@ -73,7 +77,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </header>
 
       {/* ✅ Added Dashboard link here */}
-      <nav className="backdrop-blur-sm bg-white/70 border-b border-white/20 shadow-soft">
+      <nav className="backdrop-blur-sm bg-white/70 dark:bg-gray-800/70 border-b border-white/20 dark:border-gray-700/20 shadow-soft">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex space-x-1">
             <Link
@@ -81,7 +85,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               className={`relative px-6 py-4 font-semibold text-sm transition-all duration-300 rounded-t-xl ${
                 isActive('/dashboard')
                   ? 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-medium transform -translate-y-0.5'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/50 dark:hover:bg-gray-700/50'
               }`}
             >
               <span className="flex items-center space-x-2">
@@ -98,7 +102,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               className={`relative px-6 py-4 font-semibold text-sm transition-all duration-300 rounded-t-xl ${
                 isActive('/vote')
                   ? 'bg-gradient-vote text-white shadow-vote transform -translate-y-0.5'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/50 dark:hover:bg-gray-700/50'
               }`}
             >
               <span className="flex items-center space-x-2">
@@ -115,7 +119,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               className={`relative px-6 py-4 font-semibold text-sm transition-all duration-300 rounded-t-xl ${
                 isActive('/search')
                   ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-medium transform -translate-y-0.5'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/50 dark:hover:bg-gray-700/50'
               }`}
             >
               <span className="flex items-center space-x-2">
@@ -132,7 +136,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               className={`relative px-6 py-4 font-semibold text-sm transition-all duration-300 rounded-t-xl ${
                 isActive('/database')
                   ? 'bg-gradient-music text-white shadow-glow transform -translate-y-0.5'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/50 dark:hover:bg-gray-700/50'
               }`}
             >
               <span className="flex items-center space-x-2">
@@ -149,7 +153,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               className={`relative px-6 py-4 font-semibold text-sm transition-all duration-300 rounded-t-xl ${
                 isActive('/my-ratings')
                   ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-medium transform -translate-y-0.5'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/50 dark:hover:bg-gray-700/50'
               }`}
             >
               <span className="flex items-center space-x-2">
@@ -170,9 +174,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </main>
 
-      <footer className="mt-auto py-8 bg-white/30 backdrop-blur-sm border-t border-white/20">
+      <footer className="mt-auto py-8 bg-white/30 dark:bg-gray-800/30 backdrop-blur-sm border-t border-white/20 dark:border-gray-700/20">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex justify-center items-center space-x-6 text-sm text-slate-500">
+          <div className="flex justify-center items-center space-x-6 text-sm text-slate-500 dark:text-slate-400">
             <span className="flex items-center space-x-2">
               <span>🎵</span>
               <span>Powered by TuneSquad</span>
