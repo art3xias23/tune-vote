@@ -7,10 +7,11 @@ const router = express.Router();
 // Get all votes
 router.get('/', async (req, res) => {
   try {
-    const votes = await Vote.find()
+    const votes = await Vote.find({status: { $ne: 'archived' }})
       .populate('selectedBands')
       .populate('winner')
       .sort({ createdAt: -1 });
+
 
     res.json(votes);
   } catch (error) {
@@ -125,8 +126,8 @@ router.post('/:id/submit', async (req, res) => {
     }
 
     // Validate that user is voting for 1-3 bands
-    if (!bandIds || bandIds.length === 0 || bandIds.length > 3) {
-      return res.status(400).json({ error: 'You must select 1-3 bands' });
+    if (!bandIds || bandIds.length === 0 || bandIds.length > 2) {
+      return res.status(400).json({ error: 'You must select 1-2 bands' });
     }
 
     // Add votes for each selected band
@@ -281,14 +282,27 @@ async function processVoteResults(vote) {
     vote.winner = winners[0];
     vote.status = 'rating'; // Move to rating phase
   } else {
-    console.log(`Tie between ${winners.length} bands`); // Log tie situation
     // For ties, pick first winner and move to rating phase
-    vote.winner = winners[0];
-    vote.status = 'rating';
+    vote.status = 'archived'; // Mark current vote as completed
+    //vote.winner = null; // No winner for this round
+    //vote.completedAt = new Date();
+
+    // Create a new vote with tied bands
+    const tiedBands = winners;
+    //voteCount = {};
+
+    const newVote = new Vote({
+      createdBy: vote.createdBy,
+      selectedBands: tiedBands,
+      status: 'active',
+    });
+    console.log('Tied bands:', tiedBands); // Log tied band details
+    await newVote.save();
+    await newVote.populate('selectedBands');
   }
 
   await vote.save();
-  return vote;
+  //return vote;
 }
 
 module.exports = router;

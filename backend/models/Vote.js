@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { arch } = require('os');
 
 const voteSchema = new mongoose.Schema({
   voteNumber: {
@@ -7,7 +8,7 @@ const voteSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['active', 'rating', 'completed', 'tied'],
+    enum: ['active', 'rating', 'completed', 'tied', 'archived'],
     default: 'active'
   },
   createdBy: {

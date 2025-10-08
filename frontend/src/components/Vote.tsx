@@ -102,41 +102,84 @@ const VoteComponent: React.FC = () => {
     }
   };
 
-  const submitVote = async (voteId: string) => {
-    if (votingBands.length === 0) {
-      showToast('Please select at least one band', 'error');
-      return;
+  // Add this function to reload votes after a tie
+const checkForNewVote = async () => {
+  try {
+    const votesResponse = await voteAPI.getAll();
+    setVotes(votesResponse.data);
+        
+    // Find and select the newest active vote (for ties)
+    const activeVote = votesResponse.data.find(v => v.status === 'active');
+    if (activeVote) {
+      setSelectedVote(activeVote);
     }
-    if (votingBands.length > 3) {
-      showToast('You can select maximum 3 bands', 'error');
-      return;
-    }
+  } catch (error) {
+    console.error('Error checking for new votes:', error);
+  }
+};
 
-    setSubmitting(true);
-    try {
-      // Submit all selected bands in a single request
-      const response = await voteAPI.submitVoteMultiple(voteId, votingBands, user?.username);
-      const updatedVote = response.data;
+const submitVote = async (voteId: string) => {
+  if (votingBands.length === 0) {
+    showToast('Please select at least one band', 'error');
+    return;
+  }
+  if (votingBands.length > 2) {
+    // showToast('You can select maximum 3 bands', 'error');
+    return;
+  }
 
-      const updatedVotes = votes.map(v => v._id === voteId ? updatedVote : v);
+  setSubmitting(true);
+  try {
+    const response = await voteAPI.submitVoteMultiple(voteId, votingBands, user?.username);
+    const updatedVote = response.data;
+
+    // 🧩 If this vote resulted in a tie (replace old vote with)
+    if (updatedVote.status === 'completed' && !updatedVote.winner) {
+      showToast('The vote ended in a tie! A new tie-breaker vote has been created.', 'info', 5000);
+
+      // Fetch the new active vote created by the backend
+      const votesResponse = await voteAPI.getAll();
+      const newVotes = votesResponse.data;
+      const newVote = newVotes.find(v => v.status === 'active');
+
+      if (newVote) {
+        // ✅ Replace old vote in same position instead of adding to top
+        setVotes(prev => {
+          const index = prev.findIndex(v => v._id === voteId);
+          if (index === -1) return [newVote, ...prev]; // fallback
+          const updated = [...prev];
+          updated[index] = newVote;
+          return updated;
+        });
+
+        setSelectedVote(newVote);
+      } else {
+        showToast('New tie-breaker vote not found yet. Try refreshing.', 'error');
+      }
+    } else {
+      // 🟢 Normal flow: just update the existing vote
+      const updatedVotes = votes.map(v => (v._id === voteId ? updatedVote : v));
       setVotes(updatedVotes);
       setSelectedVote(updatedVote);
-      setVotingBands([]);
-      showToast(`Your votes (${votingBands.length} bands) have been submitted!`, 'success');
-    } catch (error: any) {
-      showToast(error.response?.data?.error || 'Failed to submit vote', 'error');
-    } finally {
-      setSubmitting(false);
     }
-  };
+
+    setVotingBands([]);
+    showToast('Your votes have been submitted!', 'success');
+  } catch (error: any) {
+    showToast(error.response?.data?.error || 'Failed to submit vote', 'error');
+  } finally {
+    setSubmitting(false);
+  }
+};
+
 
   const toggleVotingBand = (bandId: string) => {
     if (votingBands.includes(bandId)) {
       setVotingBands(votingBands.filter(id => id !== bandId));
-    } else if (votingBands.length < 3) {
+    } else if (votingBands.length < 2) {
       setVotingBands([...votingBands, bandId]);
     } else {
-      showToast('You can select up to 3 bands', 'info');
+      // showToast('You can select up to 2 bands', 'info');
     }
   };
 
@@ -179,12 +222,6 @@ const VoteComponent: React.FC = () => {
 
   const isBandPreviousWinner = (bandId: string): boolean => {
     return votes.some(vote => vote.winner && vote.winner._id === bandId && vote.status === 'completed');
-  };
-
-  const getRatingColor = (score: number) => {
-    if (score >= 8) return '#10b981';
-    if (score >= 6) return '#f59e0b';
-    return '#ef4444';
   };
 
   if (loading) {
@@ -356,7 +393,6 @@ const VoteComponent: React.FC = () => {
                 const isActive = vote.status === 'active';
                 const isRating = vote.status === 'rating';
                 const isCompleted = vote.status === 'completed';
-
                 return (
                   <div
                     key={vote._id}
@@ -486,7 +522,7 @@ const VoteComponent: React.FC = () => {
                     fontSize: '1.2rem',
                     fontWeight: '600'
                   }}>
-                    Selected: {votingBands.length} / 3 bands
+                    Selected: {votingBands.length} / 2 bands
                   </div>
                 </div>
 
@@ -787,7 +823,6 @@ const VoteComponent: React.FC = () => {
                     }))
                     .sort((a, b) => b.voteCount - a.voteCount)
                     .map((band, index) => {
-                      const percentage = (band.voteCount / Math.max(selectedVote.votes.length, 1)) * 100;
                       const isWinner = selectedVote.winner && selectedVote.winner._id === band._id;
 
                       return (
@@ -1216,7 +1251,7 @@ const VoteComponent: React.FC = () => {
                       Winner: {selectedVote.winner.name}
                     </h3>
                     <p style={{ color: '#a16207', fontSize: '1.2rem', margin: 0 }}>
-                      Average Rating: ⭐ {selectedVote.averageRating.toFixed(1)} / 10
+                      Average Rating: ⭐ {selectedVote.averageRating.toFixed(1)} / 5
                     </p>
                   </div>
                 )}
