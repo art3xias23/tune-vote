@@ -17,8 +17,8 @@ const router = express.Router();
 let spotifyAccessToken = null;
 let tokenExpiresAt = null;
 
-// Using host-based Spotify proxy instead of direct API calls
-const SPOTIFY_PROXY_URL = 'http://host.docker.internal:5001';
+// Using host-based Spotify proxy - backend runs in host network mode
+const SPOTIFY_PROXY_URL = 'http://localhost:5001';
 
 const getArtistImage = (images) => {
   if (!images || images.length === 0) return '/default-band.png';
