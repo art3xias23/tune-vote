@@ -101,11 +101,13 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Submit a vote (other users vote for 1 of the 3 bands)
+// Submit a vote (users vote for 2 of the 3 bands)
 router.post('/:id/submit', async (req, res) => {
   try {
     const { bandIds, username } = req.body;
     const vote = await Vote.findById(req.params.id).populate('selectedBands');
+
+    const isTieBreaker = vote.selectedBands.length === 2;
 
     if (!vote) {
       return res.status(404).json({ error: 'Vote not found' });
@@ -125,9 +127,20 @@ router.post('/:id/submit', async (req, res) => {
       return res.status(400).json({ error: 'You have already voted in this session' });
     }
 
-    // Validate that user is voting for 1-3 bands
-    if (!bandIds || bandIds.length === 0 || bandIds.length > 2) {
-      return res.status(400).json({ error: 'You must select 1-2 bands' });
+    // Validate that user is voting for 1-2 bands
+    // if (!bandIds || bandIds.length === 0 || bandIds.length > 2) {
+    //   return res.status(400).json({ error: 'You must select 1-2 bands' });
+    // }
+
+    //new Validation for tie-breaker (must vote for 1 band)
+    if (isTieBreaker) {
+      if (!bandIds || bandIds.length !== 1) {
+        return res.status(400).json({ error: 'You must select exactly 1 band for the tie-breaker vote' });
+      }
+    } else {
+      if (!bandIds || bandIds.length === 0 || bandIds.length > 2) {
+        return res.status(400).json({ error: 'You must select 1-2 bands' });
+      }
     }
 
     // Add votes for each selected band
@@ -168,6 +181,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Vote not found' });
     }
 
+    //not deleting propperly
     await Vote.deleteOne({ _id: req.params.id });
     res.json({ message: 'Vote deleted successfully' });
   } catch (error) {
@@ -283,7 +297,7 @@ async function processVoteResults(vote) {
     vote.status = 'rating'; // Move to rating phase
   } else {
     // For ties, pick first winner and move to rating phase
-    vote.status = 'archived'; // Mark current vote as completed
+    vote.status = 'archived'; // Mark current vote as archived
     //vote.winner = null; // No winner for this round
     //vote.completedAt = new Date();
 
@@ -302,7 +316,6 @@ async function processVoteResults(vote) {
   }
 
   await vote.save();
-  //return vote;
 }
 
 module.exports = router;
