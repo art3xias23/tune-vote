@@ -18,6 +18,7 @@ const VoteComponent: React.FC = () => {
   const [hoverRating, setHoverRating] = useState(0);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [votingBands, setVotingBands] = useState<string[]>([]);
+  const isTieBreaker = selectedVote?.selectedBands.length === 2;
 
   useEffect(() => {
     loadData();
@@ -102,22 +103,6 @@ const VoteComponent: React.FC = () => {
     }
   };
 
-  // Add this function to reload votes after a tie
-const checkForNewVote = async () => {
-  try {
-    const votesResponse = await voteAPI.getAll();
-    setVotes(votesResponse.data);
-        
-    // Find and select the newest active vote (for ties)
-    const activeVote = votesResponse.data.find(v => v.status === 'active');
-    if (activeVote) {
-      setSelectedVote(activeVote);
-    }
-  } catch (error) {
-    console.error('Error checking for new votes:', error);
-  }
-};
-
 const submitVote = async (voteId: string) => {
   if (votingBands.length === 0) {
     showToast('Please select at least one band', 'error');
@@ -134,7 +119,7 @@ const submitVote = async (voteId: string) => {
     const updatedVote = response.data;
 
     // 🧩 If this vote resulted in a tie (replace old vote with)
-    if (updatedVote.status === 'completed' && !updatedVote.winner) {
+    if (updatedVote.status === 'archived' && !updatedVote.winner) {
       showToast('The vote ended in a tie! A new tie-breaker vote has been created.', 'info', 5000);
 
       // Fetch the new active vote created by the backend
@@ -174,14 +159,24 @@ const submitVote = async (voteId: string) => {
 
 
   const toggleVotingBand = (bandId: string) => {
+  if (isTieBreaker) {
+    // If already selected something, prevent selecting another
+    if (votingBands.length >= 1 && !votingBands.includes(bandId)) return;
+
+    // Toggle selection
+    setVotingBands(prev =>
+      prev.includes(bandId) ? [] : [bandId]
+    );
+  } else {
+    // Normal logic (e.g., max 2)
     if (votingBands.includes(bandId)) {
-      setVotingBands(votingBands.filter(id => id !== bandId));
+      setVotingBands(prev => prev.filter(id => id !== bandId));
     } else if (votingBands.length < 2) {
-      setVotingBands([...votingBands, bandId]);
-    } else {
-      // showToast('You can select up to 2 bands', 'info');
+      setVotingBands(prev => [...prev, bandId]);
     }
-  };
+  }
+};
+
 
   const submitRating = async (voteId: string) => {
     setSubmitting(true);
@@ -483,7 +478,10 @@ const submitVote = async (voteId: string) => {
         {selectedVote && (
           <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg dark:shadow-gray-900/20 border border-gray-200 dark:border-gray-700">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-              <h3 className="text-slate-900 dark:text-slate-100 text-xl font-semibold">Vote Details</h3>
+              <h3 className="text-slate-900 dark:text-slate-100 text-xl font-semibold">
+                {isTieBreaker ? 'Tie-Breaker Vote' : 'Vote Details'}
+
+              </h3>
               <button
                 onClick={() => setSelectedVote(null)}
                 style={{
@@ -522,7 +520,7 @@ const submitVote = async (voteId: string) => {
                     fontSize: '1.2rem',
                     fontWeight: '600'
                   }}>
-                    Selected: {votingBands.length} / 2 bands
+                    Selected: {votingBands.length} / {isTieBreaker ? 1 : 2} band{(isTieBreaker ? 1 : 2) !== 1 ? 's' : ''}
                   </div>
                 </div>
 
@@ -611,6 +609,8 @@ const submitVote = async (voteId: string) => {
                             zIndex: 1,
                             boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)'
                           }}>
+                            {isTieBreaker ? 'Select 1' : 'Select up to 2'} •
+                            
                             Selected {votingBands.indexOf(band._id) + 1}
                           </div>
                         )}
@@ -707,80 +707,91 @@ const submitVote = async (voteId: string) => {
                 </div>
 
                 {/* Submit Button */}
-                <div style={{
-                  textAlign: 'center',
-                  padding: '2rem 0'
-                }}>
-                  <button
-                    onClick={() => submitVote(selectedVote._id)}
-                    disabled={votingBands.length === 0 || submitting}
-                    style={{
-                      padding: '16px 48px',
-                      background: votingBands.length === 0
-                        ? 'linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%)'
-                        : submitting
-                          ? 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)'
-                          : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '16px',
-                      fontSize: '1.2rem',
-                      fontWeight: '700',
-                      cursor: votingBands.length === 0 || submitting ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.3s ease',
-                      boxShadow: votingBands.length === 0
-                        ? '0 4px 15px rgba(148, 163, 184, 0.3)'
-                        : '0 6px 25px rgba(16, 185, 129, 0.4)',
-                      transform: 'translateY(0)',
-                      minWidth: '250px'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (votingBands.length > 0 && !submitting) {
-                        e.currentTarget.style.transform = 'translateY(-3px)';
-                        e.currentTarget.style.boxShadow = '0 8px 30px rgba(16, 185, 129, 0.5)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = votingBands.length === 0
-                        ? '0 4px 15px rgba(148, 163, 184, 0.3)'
-                        : '0 6px 25px rgba(16, 185, 129, 0.4)';
-                    }}
-                  >
-                    {submitting ? (
-                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                        <span style={{
-                          display: 'inline-block',
-                          width: '20px',
-                          height: '20px',
-                          border: '3px solid white',
-                          borderTopColor: 'transparent',
-                          borderRadius: '50%',
-                          animation: 'spin 1s linear infinite'
-                        }}></span>
-                        Submitting your votes...
-                      </span>
-                    ) : votingBands.length === 0 ? (
-                      <span>Select bands to vote</span>
-                    ) : (
-                      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-                        <span style={{ fontSize: '1.4rem' }}>🚀</span>
-                        Submit {votingBands.length} Vote{votingBands.length > 1 ? 's' : ''}
-                      </span>
-                    )}
-                  </button>
+<div style={{ textAlign: 'center', padding: '2rem 0' }}>
+  <button
+    onClick={() => submitVote(selectedVote._id)}
+    disabled={
+      isTieBreaker
+        ? votingBands.length !== 1 || submitting
+        : votingBands.length === 0 || votingBands.length > 2 || submitting
+    }
+    style={{
+      padding: '16px 48px',
+      background:
+        votingBands.length === 0
+          ? 'linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%)'
+          : submitting
+            ? 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)'
+            : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+      color: 'white',
+      border: 'none',
+      borderRadius: '16px',
+      fontSize: '1.2rem',
+      fontWeight: '700',
+      cursor:
+        (isTieBreaker ? votingBands.length !== 1 : votingBands.length === 0 || votingBands.length > 2) || submitting
+          ? 'not-allowed'
+          : 'pointer',
+      transition: 'all 0.3s ease',
+      boxShadow:
+        votingBands.length === 0
+          ? '0 4px 15px rgba(148, 163, 184, 0.3)'
+          : '0 6px 25px rgba(16, 185, 129, 0.4)',
+      transform: 'translateY(0)',
+      minWidth: '250px'
+    }}
+    onMouseEnter={(e) => {
+      if (
+        (isTieBreaker ? votingBands.length === 1 : votingBands.length > 0 && votingBands.length <= 2) &&
+        !submitting
+      ) {
+        e.currentTarget.style.transform = 'translateY(-3px)';
+        e.currentTarget.style.boxShadow = '0 8px 30px rgba(16, 185, 129, 0.5)';
+      }
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.transform = 'translateY(0)';
+      e.currentTarget.style.boxShadow =
+        votingBands.length === 0
+          ? '0 4px 15px rgba(148, 163, 184, 0.3)'
+          : '0 6px 25px rgba(16, 185, 129, 0.4)';
+    }}
+  >
+    {submitting ? (
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+        <span style={{
+          display: 'inline-block',
+          width: '20px',
+          height: '20px',
+          border: '3px solid white',
+          borderTopColor: 'transparent',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></span>
+        Submitting your vote...
+      </span>
+    ) : (
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+        <span style={{ fontSize: '1.4rem' }}>🚀</span>
+        Submit {votingBands.length} Vote{votingBands.length !== 1 ? 's' : ''}
+      </span>
+    )}
+  </button>
 
-                  {votingBands.length > 0 && (
-                    <p style={{
-                      marginTop: '1rem',
-                      fontSize: '0.95rem',
-                      color: '#64748b'
-                    }}>
-                      You have selected {votingBands.length} band{votingBands.length > 1 ? 's' : ''}.
-                      You can select up to {3 - votingBands.length} more.
-                    </p>
-                  )}
-                </div>
+  {/* Helper Text */}
+  {votingBands.length > 0 && (
+    <p style={{
+      marginTop: '1rem',
+      fontSize: '0.95rem',
+      color: '#64748b'
+    }}>
+      {isTieBreaker
+        ? `You can only vote for 1 band in a tie-breaker round.`
+        : `You have selected ${votingBands.length} band${votingBands.length > 1 ? 's' : ''}. You can select up to ${2 - votingBands.length} more.`}
+    </p>
+  )}
+</div>
+
 
                 <style>{`
                   @keyframes spin {
