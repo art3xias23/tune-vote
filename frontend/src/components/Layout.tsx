@@ -54,9 +54,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <div className="text-xs text-slate-500 dark:text-slate-400">
                     {user?.isAdmin ? 'Administrator' : 'Member'}
                   </div>
-                  <div className="mt-1">
-                    <BuildInfo />
-                  </div>
                 </div>
                 {user?.isAdmin && (
                   <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold bg-gradient-to-r from-accent-100 to-rating-100 text-accent-700 shadow-soft">
@@ -187,6 +184,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </span>
             <span>•</span>
             <span>Music Discovery & Voting</span>
+            <span>•</span>
+            <BuildInfo />
           </div>
         </div>
       </footer>

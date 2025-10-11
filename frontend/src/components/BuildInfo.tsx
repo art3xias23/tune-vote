@@ -5,9 +5,9 @@ const BuildInfo: React.FC = () => {
   const buildCommit = process.env.REACT_APP_BUILD_COMMIT?.substring(0, 7) || 'local';
 
   return (
-    <div className="text-xs text-slate-400 dark:text-slate-500">
-      Build: #{buildNumber} ({buildCommit})
-    </div>
+    <span>
+      #{buildNumber} ({buildCommit})
+    </span>
   );
 };
 
