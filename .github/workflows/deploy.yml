@@ -14,12 +14,13 @@ jobs:
 
     steps:
     - name: Deploy to server via SSH
-      uses: appleboy/ssh-action@v1.0.0
+      uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.PORT }}
+        command_timeout: 20m
         script: |
           cd /opt/tune-vote
           git pull origin main
