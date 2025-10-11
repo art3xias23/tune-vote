@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import ThemeToggle from './ThemeToggle';
+import BuildInfo from './BuildInfo';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -52,6 +53,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400">
                     {user?.isAdmin ? 'Administrator' : 'Member'}
+                  </div>
+                  <div className="mt-1">
+                    <BuildInfo />
                   </div>
                 </div>
                 {user?.isAdmin && (

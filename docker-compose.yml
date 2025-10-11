@@ -70,6 +70,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        - REACT_APP_BUILD_NUMBER=${REACT_APP_BUILD_NUMBER:-dev}
+        - REACT_APP_BUILD_COMMIT=${REACT_APP_BUILD_COMMIT:-local}
     container_name: tune-vote-frontend
     restart: unless-stopped
     ports:

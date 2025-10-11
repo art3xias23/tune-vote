@@ -31,7 +31,9 @@ jobs:
           # Restart Spotify proxy service
           sudo systemctl restart spotify-proxy
 
-          # Restart Docker containers
+          # Set build number and restart Docker containers
+          export REACT_APP_BUILD_NUMBER=${{ github.run_number }}
+          export REACT_APP_BUILD_COMMIT=${{ github.sha }}
           docker compose down
           docker compose up -d --build
           docker system prune -f
@@ -40,3 +42,5 @@ jobs:
           sleep 10
           systemctl is-active spotify-proxy
           docker compose ps
+
+          echo "Deployed build #${{ github.run_number }}"

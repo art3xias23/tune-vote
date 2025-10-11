@@ -11,6 +11,14 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci && npm cache clean --force
 
+# Accept build arguments
+ARG REACT_APP_BUILD_NUMBER=dev
+ARG REACT_APP_BUILD_COMMIT=local
+
+# Set environment variables from build args
+ENV REACT_APP_BUILD_NUMBER=$REACT_APP_BUILD_NUMBER
+ENV REACT_APP_BUILD_COMMIT=$REACT_APP_BUILD_COMMIT
+
 # Copy source code
 COPY . .
 

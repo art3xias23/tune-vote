@@ -17,7 +17,20 @@ console.log('[Server] Spotify Client ID exists:', !!process.env.SPOTIFY_CLIENT_I
 console.log('[Server] Spotify Client Secret exists:', !!process.env.SPOTIFY_CLIENT_SECRET);
 
 app.use(helmet());
-app.use(cors());
+
+// Configure CORS properly
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://tune-vote.pragmatino.xyz'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
