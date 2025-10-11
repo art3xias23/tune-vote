@@ -28,6 +28,22 @@ jobs:
           git reset --hard origin/main
           echo "Updated to: $(git rev-parse HEAD | cut -c1-7)"
 
+    - name: 🔧 Restart Spotify Proxy
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.PORT }}
+        command_timeout: 2m
+        script: |
+          cd /opt/tune-vote
+          echo "Restarting Spotify proxy service..."
+          sudo systemctl restart spotify-proxy
+          sleep 2
+          echo "Spotify proxy status: $(systemctl is-active spotify-proxy)"
+          echo "Listening on: $(sudo netstat -tlnp | grep 5001 | awk '{print $4}')"
+
     - name: 🐳 Build Containers
       uses: appleboy/ssh-action@v1.0.3
       with:
