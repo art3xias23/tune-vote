@@ -74,14 +74,21 @@ jobs:
           echo "=== Building and Starting Containers ==="
           echo "Build: #${{ github.run_number }} Commit: ${{ github.sha }}"
 
+          # Export environment variables for Docker
+          export REACT_APP_BUILD_NUMBER=${{ github.run_number }}
+          export REACT_APP_BUILD_COMMIT=${{ github.sha }}
+          echo "Environment variables set:"
+          echo "REACT_APP_BUILD_NUMBER=${REACT_APP_BUILD_NUMBER}"
+          echo "REACT_APP_BUILD_COMMIT=${REACT_APP_BUILD_COMMIT}"
+
           # Stop old containers
           docker compose down
 
-          # Build with environment variables
-          REACT_APP_BUILD_NUMBER=${{ github.run_number }} REACT_APP_BUILD_COMMIT=${{ github.sha }} docker compose build --no-cache --progress=plain
+          # Build backend and frontend with latest code
+          docker compose build --no-cache backend frontend
 
-          # Start containers
-          REACT_APP_BUILD_NUMBER=${{ github.run_number }} REACT_APP_BUILD_COMMIT=${{ github.sha }} docker compose up -d
+          # Start all containers
+          docker compose up -d
 
           # Clean up
           docker system prune -f
