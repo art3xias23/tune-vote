@@ -28,23 +28,29 @@ jobs:
           git reset --hard origin/main
           echo "Updated to: $(git rev-parse HEAD | cut -c1-7)"
 
-    - name: 🔧 Restart Services
+    - name: 🔧 Install Dependencies & Restart Services
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.PORT }}
-        command_timeout: 3m
+        command_timeout: 5m
         script: |
           cd /opt/tune-vote
 
+          # Install Node.js dependencies for Spotify proxy
+          echo "Installing npm dependencies..."
+          npm install --omit=dev
+          echo "✅ Dependencies installed"
+
           # Restart Spotify proxy service
           echo "Restarting Spotify proxy..."
-          sudo systemctl restart spotify-proxy
-          sleep 2
+          sudo systemctl stop spotify-proxy
+          sudo systemctl start spotify-proxy
+          sleep 3
           echo "✅ Spotify proxy: $(systemctl is-active spotify-proxy)"
-          echo "   Listening: $(sudo netstat -tlnp | grep 5001 | awk '{print $4}')"
+          echo "   Listening: $(sudo netstat -tlnp | grep 5001 | awk '{print $4}' || echo 'not found')"
 
           # Reload nginx configuration (in case nginx configs changed)
           echo "Reloading nginx configuration..."
@@ -53,7 +59,12 @@ jobs:
 
           # Test connectivity from host to proxy
           echo "Testing proxy connectivity..."
-          curl -s http://localhost:5001/spotify/search?q=test\&type=artist\&limit=1 >/dev/null && echo "✅ Proxy reachable from host" || echo "❌ Proxy unreachable"
+          if curl -s -m 5 http://localhost:5001/spotify/search?q=test\&type=artist\&limit=1 >/dev/null 2>&1; then
+            echo "✅ Proxy reachable from host"
+          else
+            echo "❌ Proxy unreachable - checking service status..."
+            sudo systemctl status spotify-proxy --no-pager -l
+          fi
 
     - name: 🐳 Build Containers
       uses: appleboy/ssh-action@v1.0.3
