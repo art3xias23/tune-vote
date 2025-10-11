@@ -23,88 +23,63 @@ jobs:
         command_timeout: 20m
         script: |
           cd /opt/tune-vote
-          echo "=== Starting Deployment ==="
-          echo "User: $(whoami)"
-          echo "Before: $(git rev-parse HEAD 2>/dev/null || echo 'no git')"
 
-          # Detailed debugging of git directory
-          echo "=== Debugging Git Issues ==="
-          echo "Git directory ownership:"
-          ls -la .git/ | head -10
-          echo ""
-          echo "Objects directory:"
-          ls -la .git/objects/ | head -5
-          echo ""
-          echo "Current user info:"
-          id
-          echo ""
-          echo "Disk space:"
-          df -h .
-          echo ""
+          echo "::group::📥 Updating Code"
+          echo "::notice::Starting deployment #${{ github.run_number }}"
+          echo "Current commit: $(git rev-parse HEAD 2>/dev/null || echo 'unknown')"
 
-          # Try to fix permissions with detailed output
-          echo "Attempting to fix .git permissions..."
-          chmod -v u+w .git/objects 2>&1 || echo "chmod .git/objects failed"
-          chmod -v u+w .git/objects/* 2>&1 || echo "chmod .git/objects/* failed"
+          # Simple git update
+          git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/art3xias23/tune-vote.git
+          git fetch origin main
+          git reset --hard origin/main
 
-          # Test git operations step by step
-          echo "=== Testing Git Operations ==="
+          echo "::notice::Updated to commit: $(git rev-parse HEAD)"
+          echo "::endgroup::"
 
-          echo "1. Setting remote URL..."
-          git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/art3xias23/tune-vote.git 2>&1 || echo "Remote set failed"
-
-          echo "2. Testing git fetch..."
-          git fetch origin main 2>&1 || echo "Fetch failed - trying alternative"
-
-          if [ $? -ne 0 ]; then
-            echo "Fetch failed, trying to reinitialize git..."
-            rm -rf .git
-            git init
-            git remote add origin https://${{ secrets.GH_TOKEN }}@github.com/art3xias23/tune-vote.git
-            git fetch origin main
-            git checkout -b main origin/main
-          else
-            echo "3. Testing git reset..."
-            git reset --hard origin/main 2>&1 || echo "Reset failed"
-          fi
-
-          echo "Final commit: $(git rev-parse HEAD)"
-
-          # Deploy containers with build info
-          echo "=== Building and Starting Containers ==="
-          echo "Build: #${{ github.run_number }} Commit: ${{ github.sha }}"
-
-          # Export environment variables for Docker
+          echo "::group::🐳 Building Containers"
+          # Export build variables
           export REACT_APP_BUILD_NUMBER=${{ github.run_number }}
           export REACT_APP_BUILD_COMMIT=${{ github.sha }}
-          echo "Environment variables set:"
-          echo "REACT_APP_BUILD_NUMBER=${REACT_APP_BUILD_NUMBER}"
-          echo "REACT_APP_BUILD_COMMIT=${REACT_APP_BUILD_COMMIT}"
 
-          # Stop old containers
+          echo "::notice::Build #${{ github.run_number }} - $(echo ${{ github.sha }} | cut -c1-7)"
+
+          # Stop and rebuild
           docker compose down
-
-          # Build backend and frontend with latest code
           docker compose build --no-cache backend frontend
+          echo "::endgroup::"
 
-          # Start all containers
+          echo "::group::🚀 Starting Services"
           docker compose up -d
 
-          # Clean up
-          docker system prune -f
+          # Clean up old images
+          docker system prune -f >/dev/null 2>&1
 
-          # Wait and test
-          echo "=== Waiting for Services ==="
+          echo "::notice::Waiting for services to start..."
           sleep 20
+          echo "::endgroup::"
 
-          echo "=== Testing ==="
-          echo "Backend:"
-          curl -f http://localhost:5000/api/health 2>/dev/null && echo "✓ OK" || echo "✗ FAIL"
+          echo "::group::✅ Health Checks"
+          # Test backend
+          if curl -f http://localhost:5000/api/health >/dev/null 2>&1; then
+            echo "::notice::✅ Backend: Healthy"
+          else
+            echo "::error::❌ Backend: Failed"
+          fi
 
-          echo "Frontend:"
-          curl -s http://localhost:3001/ 2>/dev/null | grep -q "Tune Vote" && echo "✓ OK" || echo "✗ FAIL"
+          # Test frontend
+          if curl -s http://localhost:3001/ 2>/dev/null | grep -q "Tune Vote"; then
+            echo "::notice::✅ Frontend: Healthy"
+          else
+            echo "::error::❌ Frontend: Failed"
+          fi
 
-          echo "Build number in HTML:"
-          curl -s http://localhost:3001/ 2>/dev/null | grep -o "#[0-9]\+" | head -1 || echo "Not found"
+          # Check build number
+          BUILD_NUM=$(curl -s http://localhost:3001/ 2>/dev/null | grep -o "#[0-9]\+" | head -1)
+          if [ -n "$BUILD_NUM" ]; then
+            echo "::notice::✅ Build number: $BUILD_NUM"
+          else
+            echo "::warning::⚠️ Build number not found in HTML"
+          fi
+          echo "::endgroup::"
 
-          echo "=== Done: Build #${{ github.run_number }} ==="
+          echo "::notice::🎉 Deployment #${{ github.run_number }} completed successfully!"
