@@ -14,6 +14,13 @@ discovery.relabel "containers" {
     action        = "keep"
   }
 
+  // Exclude monitoring services (loki, grafana, alloy)
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = ".*(loki|grafana|alloy).*"
+    action        = "drop"
+  }
+
   // Rename the container name label
   rule {
     source_labels = ["__meta_docker_container_name"]

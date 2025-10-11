@@ -74,6 +74,42 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Test endpoint for Spotify connectivity
+router.get('/test-spotify', async (req, res) => {
+  try {
+    console.log('[Spotify Test] Testing Spotify connection...');
+    const token = await getSpotifyToken();
+    console.log('[Spotify Test] Token obtained successfully');
+
+    // Try a simple search
+    const response = await axios.get('https://api.spotify.com/v1/search', {
+      params: {
+        q: 'test',
+        type: 'artist',
+        limit: 1
+      },
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    console.log('[Spotify Test] Search successful, found:', response.data.artists.items.length, 'artists');
+    res.json({
+      success: true,
+      tokenObtained: !!token,
+      searchWorked: true,
+      artistsFound: response.data.artists.items.length
+    });
+  } catch (error) {
+    console.error('[Spotify Test] Failed:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      details: error.response?.data
+    });
+  }
+});
+
 router.get('/search', async (req, res) => {
   try {
     const { q } = req.query;
