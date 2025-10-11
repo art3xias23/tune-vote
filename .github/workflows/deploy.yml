@@ -13,61 +13,88 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Deploy to server via SSH
+    - name: 📥 Update Code
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.PORT }}
-        command_timeout: 20m
+        command_timeout: 5m
+        script: |
+          cd /opt/tune-vote
+          git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/art3xias23/tune-vote.git
+          git fetch origin main
+          git reset --hard origin/main
+          echo "Updated to: $(git rev-parse HEAD | cut -c1-7)"
+
+    - name: 🐳 Build Containers
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.PORT }}
+        command_timeout: 10m
+        script: |
+          cd /opt/tune-vote
+          export REACT_APP_BUILD_NUMBER=${{ github.run_number }}
+          export REACT_APP_BUILD_COMMIT=${{ github.sha }}
+          docker compose down
+          docker compose build --no-cache --quiet backend frontend
+
+    - name: 🚀 Start Services
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.PORT }}
+        command_timeout: 5m
+        script: |
+          cd /opt/tune-vote
+          export REACT_APP_BUILD_NUMBER=${{ github.run_number }}
+          export REACT_APP_BUILD_COMMIT=${{ github.sha }}
+          docker compose up -d
+          docker system prune -f >/dev/null 2>&1
+
+    - name: ⏳ Wait for Services
+      run: sleep 20
+
+    - name: ✅ Health Checks
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: ${{ secrets.PORT }}
+        command_timeout: 2m
         script: |
           cd /opt/tune-vote
 
-          echo "🚀 Starting deployment #${{ github.run_number }}"
-
-          # Update code
-          git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/art3xias23/tune-vote.git >/dev/null 2>&1
-          git fetch origin main >/dev/null 2>&1
-          git reset --hard origin/main >/dev/null 2>&1
-          echo "✅ Code updated to $(git rev-parse HEAD | cut -c1-7)"
-
-          # Build containers
-          export REACT_APP_BUILD_NUMBER=${{ github.run_number }}
-          export REACT_APP_BUILD_COMMIT=${{ github.sha }}
-
-          echo "🐳 Building containers..."
-          docker compose down >/dev/null 2>&1
-          docker compose build --no-cache --quiet backend frontend
-
-          # Start services
-          echo "🚀 Starting services..."
-          docker compose up -d >/dev/null 2>&1
-          docker system prune -f >/dev/null 2>&1
-
-          echo "⏳ Waiting for services..."
-          sleep 15
-
-          # Health checks
-          echo "🔍 Health checks:"
-
+          echo "Backend Health:"
           if curl -sf http://localhost:5000/api/health >/dev/null 2>&1; then
-            echo "  ✅ Backend: OK"
+            echo "✅ Backend: Healthy"
           else
-            echo "  ❌ Backend: FAILED"
+            echo "❌ Backend: Failed"
+            exit 1
           fi
 
+          echo "Frontend Health:"
           if curl -s http://localhost:3001/ 2>/dev/null | grep -q "Tune Vote"; then
-            echo "  ✅ Frontend: OK"
+            echo "✅ Frontend: Healthy"
           else
-            echo "  ❌ Frontend: FAILED"
+            echo "❌ Frontend: Failed"
+            exit 1
           fi
 
+          echo "Build Number Check:"
           BUILD_NUM=$(curl -s http://localhost:3001/ 2>/dev/null | grep -o "#[0-9]\+" | head -1)
           if [ -n "$BUILD_NUM" ]; then
-            echo "  ✅ Build: $BUILD_NUM"
+            echo "✅ Build Number: $BUILD_NUM"
           else
-            echo "  ❌ Build: Not found"
+            echo "⚠️ Build number not found"
           fi
 
-          echo "🎉 Deployment #${{ github.run_number }} complete!"
+    - name: 🎉 Deployment Complete
+      run: echo "::notice::🎉 Successfully deployed build #${{ github.run_number }} to production!"

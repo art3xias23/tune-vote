@@ -29,21 +29,26 @@ services:
       dockerfile: Dockerfile
     container_name: tune-vote-backend
     restart: unless-stopped
-    network_mode: host
     env_file:
       - .env
     environment:
       NODE_ENV: production
       PORT: ${PORT}
-      MONGODB_URI: mongodb://admin:password123@localhost:27017/tunevote?authSource=admin
+      MONGODB_URI: ${MONGODB_URI}
       JWT_SECRET: ${JWT_SECRET}
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID}
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
       CLIENT_URL: ${CLIENT_URL}
+    ports:
+      - "5000:5000"
     depends_on:
       mongodb:
         condition: service_healthy
+    networks:
+      - tune-vote-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./backend:/app
       - /app/node_modules
