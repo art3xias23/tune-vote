@@ -48,8 +48,16 @@ jobs:
           # Stop containers first
           docker compose down
 
-          # Build and start with environment variables
-          REACT_APP_BUILD_NUMBER=${{ github.run_number }} REACT_APP_BUILD_COMMIT=${{ github.sha }} docker compose up -d --build
+          # Build and start with environment variables (force rebuild without cache)
+          echo "Building frontend with REACT_APP_BUILD_NUMBER=${{ github.run_number }} REACT_APP_BUILD_COMMIT=${{ github.sha }}"
+          REACT_APP_BUILD_NUMBER=${{ github.run_number }} REACT_APP_BUILD_COMMIT=${{ github.sha }} docker compose build --no-cache frontend
+
+          echo "Starting all containers..."
+          REACT_APP_BUILD_NUMBER=${{ github.run_number }} REACT_APP_BUILD_COMMIT=${{ github.sha }} docker compose up -d
+
+          # Check if frontend container actually rebuilt
+          echo "Frontend container info:"
+          docker inspect tune-vote-frontend | grep -A 5 -B 5 "REACT_APP" || echo "No REACT_APP vars found"
 
           # Clean up
           docker system prune -f
@@ -65,7 +73,11 @@ jobs:
           # Test the services
           echo "=== Testing Services ==="
           curl -f http://localhost:5000/api/health || echo "Backend health check failed"
-          curl -f http://localhost:3001/ || echo "Frontend health check failed"
+          curl -s http://localhost:3001/ | grep -o "Build.*#[0-9]" || echo "Build number not found in frontend HTML"
           curl -f http://localhost:5001/spotify/search?q=test&type=artist&limit=1 || echo "Spotify proxy test failed"
+
+          # Test backend Spotify integration
+          echo "=== Testing Backend Spotify Integration ==="
+          curl -s http://localhost:5000/api/bands/search-external?q=AC | head -c 200 || echo "Backend Spotify search failed"
 
           echo "Successfully deployed build #${{ github.run_number }}"
