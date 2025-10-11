@@ -103,7 +103,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum by (container) (rate({container=~\"tune-vote.*\"}[1m]))",
+          "expr": "sum by (container) (rate({container=~\"$container\"}[1m]))",
           "queryType": "range",
           "refId": "A"
         }
@@ -169,7 +169,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum(count_over_time({container=\"tune-vote-backend\"} |= \"Spotify API Error\" [5m]))",
+          "expr": "sum(count_over_time({container=~\"$container\"} |= \"Spotify API Error\" [5m]))",
           "queryType": "instant",
           "refId": "A"
         }
@@ -205,7 +205,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{container=\"tune-vote-backend\"} |= \"Spotify\"",
+          "expr": "{container=~\"$container\"} |= \"Spotify\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -241,7 +241,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{container=\"tune-vote-backend\"} |~ \"Error|error|ERROR|Failed|failed|FAILED\"",
+          "expr": "{container=~\"$container\"} |~ \"Error|error|ERROR|Failed|failed|FAILED\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -277,7 +277,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{container=\"tune-vote-backend\"} |~ \"GET|POST|PUT|DELETE\" |~ \"/api/\"",
+          "expr": "{container=~\"$container\"} |~ \"GET|POST|PUT|DELETE\" |~ \"/api/\"",
           "queryType": "range",
           "refId": "A"
         }
@@ -313,7 +313,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{container=~\"tune-vote.*\"}",
+          "expr": "{container=~\"$container\"}",
           "queryType": "range",
           "refId": "A"
         }
@@ -344,6 +344,31 @@
         "regex": "",
         "skipUrlSync": false,
         "type": "datasource"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": ["All"],
+          "value": ["$__all"]
+        },
+        "datasource": {
+          "type": "loki",
+          "uid": "$datasource"
+        },
+        "definition": "label_values(container)",
+        "hide": 0,
+        "includeAll": true,
+        "allValue": ".*tune-vote.*",
+        "label": "Container",
+        "multi": true,
+        "name": "container",
+        "options": [],
+        "query": "label_values(container)",
+        "refresh": 2,
+        "regex": "tune-vote.*",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
       }
     ]
   },
