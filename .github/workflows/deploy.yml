@@ -24,6 +24,19 @@ jobs:
         script: |
           cd /opt/tune-vote
           git pull origin main
+
+          # Install Node.js dependencies for Spotify proxy
+          npm install --only=production
+
+          # Restart Spotify proxy service
+          sudo systemctl restart spotify-proxy
+
+          # Restart Docker containers
           docker compose down
           docker compose up -d --build
           docker system prune -f
+
+          # Verify services are running
+          sleep 10
+          systemctl is-active spotify-proxy
+          docker compose ps

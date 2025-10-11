@@ -1,7 +1,15 @@
 const express = require('express');
 const axios = require('axios');
+const https = require('https');
 const Band = require('../models/Band');
 const { format } = require('path');
+
+// Create axios instance with IPv4 forced
+const axiosInstance = axios.create({
+  httpsAgent: new https.Agent({
+    family: 4 // Force IPv4
+  })
+});
 
 const router = express.Router();
 
@@ -9,72 +17,8 @@ const router = express.Router();
 let spotifyAccessToken = null;
 let tokenExpiresAt = null;
 
-const getSpotifyToken = async () => {
-  // Check if we have a valid token
-  if (spotifyAccessToken && tokenExpiresAt && new Date() < tokenExpiresAt) {
-    console.log('[Spotify] Using cached access token, expires at:', tokenExpiresAt);
-    return spotifyAccessToken;
-  }
-
-  console.log('[Spotify] Requesting new access token...');
-  console.log('[Spotify] Client ID exists:', !!process.env.SPOTIFY_CLIENT_ID);
-  console.log('[Spotify] Client Secret exists:', !!process.env.SPOTIFY_CLIENT_SECRET);
-  console.log('[Spotify] Client ID length:', process.env.SPOTIFY_CLIENT_ID?.length);
-
-  if (!process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
-    console.error('[Spotify API Error] Missing credentials!');
-    console.error('[Spotify API Error] SPOTIFY_CLIENT_ID:', process.env.SPOTIFY_CLIENT_ID || 'NOT SET');
-    console.error('[Spotify API Error] SPOTIFY_CLIENT_SECRET:', process.env.SPOTIFY_CLIENT_SECRET ? 'SET' : 'NOT SET');
-    throw new Error('Spotify credentials not configured');
-  }
-
-  try {
-    const authString = Buffer.from(
-      process.env.SPOTIFY_CLIENT_ID + ':' + process.env.SPOTIFY_CLIENT_SECRET
-    ).toString('base64');
-
-    console.log('[Spotify] Auth string prepared, length:', authString.length);
-
-    // Use URLSearchParams for proper form encoding
-    const params = new URLSearchParams();
-    params.append('grant_type', 'client_credentials');
-
-    const tokenUrl = 'https://accounts.spotify.com/api/token';
-    console.log('[Spotify] Making token request to:', tokenUrl);
-    console.log('[Spotify] Request body:', params.toString());
-
-    const response = await axios({
-      method: 'POST',
-      url: tokenUrl,
-      data: params.toString(),
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': 'Basic ' + authString
-      },
-      timeout: 10000
-    });
-
-    spotifyAccessToken = response.data.access_token;
-    // Set expiration time (subtract 60 seconds for buffer)
-    tokenExpiresAt = new Date(Date.now() + (response.data.expires_in - 60) * 1000);
-    console.log('[Spotify] Access token obtained successfully, expires at:', tokenExpiresAt);
-    return spotifyAccessToken;
-  } catch (error) {
-    console.error('[Spotify API Error] Failed to get access token:');
-    console.error('[Spotify API Error] Status:', error.response?.status);
-    console.error('[Spotify API Error] Status Text:', error.response?.statusText);
-    console.error('[Spotify API Error] Data:', JSON.stringify(error.response?.data));
-    console.error('[Spotify API Error] Request URL:', error.config?.url);
-    console.error('[Spotify API Error] Request Headers:', JSON.stringify(error.config?.headers));
-    console.error('[Spotify API Error] Message:', error.message);
-
-    // Check if it's trying to use a proxy or wrong URL
-    if (error.config?.url) {
-      console.error('[Spotify API Error] Full URL attempted:', error.config.url);
-    }
-    throw error;
-  }
-};
+// Using host-based Spotify proxy instead of direct API calls
+const SPOTIFY_PROXY_URL = 'http://host.docker.internal:5001';
 
 const getArtistImage = (images) => {
   if (!images || images.length === 0) return '/default-band.png';
@@ -95,38 +39,33 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Test endpoint for Spotify connectivity
+// Test endpoint for Spotify connectivity via proxy
 router.get('/test-spotify', async (req, res) => {
   try {
-    console.log('[Spotify Test] Testing Spotify connection...');
-    const token = await getSpotifyToken();
-    console.log('[Spotify Test] Token obtained successfully');
+    console.log('[Spotify Test] Testing Spotify proxy connection...');
 
-    // Try a simple search
-    const response = await axios.get('https://api.spotify.com/v1/search', {
+    const response = await axios.get(`${SPOTIFY_PROXY_URL}/spotify/search`, {
       params: {
         q: 'test',
         type: 'artist',
         limit: 1
       },
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
+      timeout: 10000
     });
 
-    console.log('[Spotify Test] Search successful, found:', response.data.artists.items.length, 'artists');
+    console.log('[Spotify Test] Proxy search successful, found:', response.data.artists.items.length, 'artists');
     res.json({
       success: true,
-      tokenObtained: !!token,
-      searchWorked: true,
-      artistsFound: response.data.artists.items.length
+      proxyWorked: true,
+      artistsFound: response.data.artists.items.length,
+      artistName: response.data.artists.items[0]?.name
     });
   } catch (error) {
-    console.error('[Spotify Test] Failed:', error.message);
+    console.error('[Spotify Test] Proxy failed:', error.message);
     res.status(500).json({
       success: false,
       error: error.message,
-      details: error.response?.data
+      proxyUrl: SPOTIFY_PROXY_URL
     });
   }
 });
@@ -163,25 +102,19 @@ router.get('/search-external', async (req, res) => {
     const searchResults = [];
 
     try {
-      // Get Spotify access token
-      console.log('[Spotify Search] Getting access token...');
-      const accessToken = await getSpotifyToken();
-      console.log('[Spotify Search] Token obtained, making search request...');
+      // Search artists using host proxy
+      console.log('[Spotify Search] Using proxy to search for:', q);
 
-      // Search for artists on Spotify
-      const spotifySearchResponse = await axios.get('https://api.spotify.com/v1/search', {
+      const spotifySearchResponse = await axios.get(`${SPOTIFY_PROXY_URL}/spotify/search`, {
         params: {
           q: q,
           type: 'artist',
           limit: 5
         },
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        },
-        timeout: 5000
+        timeout: 10000
       });
 
-      console.log('[Spotify Search] Response received, status:', spotifySearchResponse.status);
+      console.log('[Spotify Search] Proxy response received');
 
       if (spotifySearchResponse.data.artists && spotifySearchResponse.data.artists.items) {
         const artists = spotifySearchResponse.data.artists.items;
@@ -190,17 +123,14 @@ router.get('/search-external', async (req, res) => {
         for (const artist of artists.slice(0, 3)) { // Get top 3 results
           const existingBand = await Band.findOne({ name: artist.name });
 
-          // Get more artist details
+          // Get top tracks using proxy
           let topTracks = [];
-
           try {
-            // Get top tracks for the artist
             const topTracksResponse = await axios.get(
-              `https://api.spotify.com/v1/artists/${artist.id}/top-tracks`,
+              `${SPOTIFY_PROXY_URL}/spotify/artist/${artist.id}/top-tracks`,
               {
                 params: { market: 'US' },
-                headers: { 'Authorization': `Bearer ${accessToken}` },
-                timeout: 3000
+                timeout: 5000
               }
             );
 
@@ -231,13 +161,9 @@ router.get('/search-external', async (req, res) => {
         }
       }
     } catch (spotifyError) {
-      console.error('[Spotify API Error] Search failed:');
-      console.error('[Spotify API Error] Status:', spotifyError.response?.status);
-      console.error('[Spotify API Error] Data:', JSON.stringify(spotifyError.response?.data));
-      console.error('[Spotify API Error] Message:', spotifyError.message);
-      console.error('[Spotify API Error] Full error:', spotifyError);
+      console.error('[Spotify Proxy Error] Search failed:', spotifyError.message);
 
-      // If Spotify fails, provide manual option
+      // If proxy fails, provide manual option
       searchResults.push({
         name: q,
         image: '/default-band.png',
