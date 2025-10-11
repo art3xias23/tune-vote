@@ -28,21 +28,32 @@ jobs:
           git reset --hard origin/main
           echo "Updated to: $(git rev-parse HEAD | cut -c1-7)"
 
-    - name: 🔧 Restart Spotify Proxy
+    - name: 🔧 Restart Services
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.HOST }}
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: ${{ secrets.PORT }}
-        command_timeout: 2m
+        command_timeout: 3m
         script: |
           cd /opt/tune-vote
-          echo "Restarting Spotify proxy service..."
+
+          # Restart Spotify proxy service
+          echo "Restarting Spotify proxy..."
           sudo systemctl restart spotify-proxy
           sleep 2
-          echo "Spotify proxy status: $(systemctl is-active spotify-proxy)"
-          echo "Listening on: $(sudo netstat -tlnp | grep 5001 | awk '{print $4}')"
+          echo "✅ Spotify proxy: $(systemctl is-active spotify-proxy)"
+          echo "   Listening: $(sudo netstat -tlnp | grep 5001 | awk '{print $4}')"
+
+          # Reload nginx configuration (in case nginx configs changed)
+          echo "Reloading nginx configuration..."
+          sudo nginx -t && sudo systemctl reload nginx || echo "⚠️ nginx config issue"
+          echo "✅ nginx: $(systemctl is-active nginx)"
+
+          # Test connectivity from host to proxy
+          echo "Testing proxy connectivity..."
+          curl -s http://localhost:5001/spotify/search?q=test\&type=artist\&limit=1 >/dev/null && echo "✅ Proxy reachable from host" || echo "❌ Proxy unreachable"
 
     - name: 🐳 Build Containers
       uses: appleboy/ssh-action@v1.0.3
