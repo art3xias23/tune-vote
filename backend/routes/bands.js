@@ -20,6 +20,13 @@ const getSpotifyToken = async () => {
   console.log('[Spotify] Client ID exists:', !!process.env.SPOTIFY_CLIENT_ID);
   console.log('[Spotify] Client Secret exists:', !!process.env.SPOTIFY_CLIENT_SECRET);
 
+  if (!process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
+    console.error('[Spotify API Error] Missing credentials!');
+    console.error('[Spotify API Error] SPOTIFY_CLIENT_ID:', process.env.SPOTIFY_CLIENT_ID || 'NOT SET');
+    console.error('[Spotify API Error] SPOTIFY_CLIENT_SECRET:', process.env.SPOTIFY_CLIENT_SECRET ? 'SET' : 'NOT SET');
+    throw new Error('Spotify credentials not configured');
+  }
+
   try {
     const response = await axios.post(
       'https://accounts.spotify.com/api/token',
