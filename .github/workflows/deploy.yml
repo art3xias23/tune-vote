@@ -23,61 +23,47 @@ jobs:
         command_timeout: 20m
         script: |
           cd /opt/tune-vote
-          echo "Current directory: $(pwd)"
-          echo "Current user: $(whoami)"
-          echo "Before pull - Latest commit: $(git rev-parse HEAD)"
+          echo "=== Starting Deployment ==="
+          echo "Directory: $(pwd)"
+          echo "User: $(whoami)"
+          echo "Before: $(git rev-parse HEAD 2>/dev/null || echo 'no git')"
 
-          # Fix git permissions and pull
-          sudo chown -R $(whoami):$(whoami) .git
-          git reset --hard HEAD
+          # Use GitHub token for reliable git operations
+          export GIT_ASKPASS=/bin/true
+          git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/art3xias23/tune-vote.git
+          git fetch origin main
+          git reset --hard origin/main
           git clean -fd
-          git pull origin main
-          echo "After pull - Latest commit: $(git rev-parse HEAD)"
+          echo "After: $(git rev-parse HEAD)"
 
-          # Fix npm permissions and install dependencies for Spotify proxy
-          sudo rm -rf node_modules package-lock.json
-          npm install --omit=dev
+          # Deploy containers with build info
+          echo "=== Building and Starting Containers ==="
+          echo "Build: #${{ github.run_number }} Commit: ${{ github.sha }}"
 
-          # Restart Spotify proxy service
-          sudo systemctl restart spotify-proxy
-          echo "Spotify proxy status: $(systemctl is-active spotify-proxy)"
-
-          # Set build number and restart Docker containers
-          echo "Starting deployment - Build #${{ github.run_number }} - Commit ${{ github.sha }}"
-
-          # Stop containers first
+          # Stop old containers
           docker compose down
 
-          # Build and start with environment variables (force rebuild without cache)
-          echo "Building frontend with REACT_APP_BUILD_NUMBER=${{ github.run_number }} REACT_APP_BUILD_COMMIT=${{ github.sha }}"
-          REACT_APP_BUILD_NUMBER=${{ github.run_number }} REACT_APP_BUILD_COMMIT=${{ github.sha }} docker compose build --no-cache frontend
+          # Build with environment variables
+          REACT_APP_BUILD_NUMBER=${{ github.run_number }} REACT_APP_BUILD_COMMIT=${{ github.sha }} docker compose build --no-cache --progress=plain
 
-          echo "Starting all containers..."
+          # Start containers
           REACT_APP_BUILD_NUMBER=${{ github.run_number }} REACT_APP_BUILD_COMMIT=${{ github.sha }} docker compose up -d
-
-          # Check if frontend container actually rebuilt
-          echo "Frontend container info:"
-          docker inspect tune-vote-frontend | grep -A 5 -B 5 "REACT_APP" || echo "No REACT_APP vars found"
 
           # Clean up
           docker system prune -f
 
-          # Wait for containers to be ready
-          sleep 15
+          # Wait and test
+          echo "=== Waiting for Services ==="
+          sleep 20
 
-          # Verify services are running
-          echo "=== Service Status ==="
-          systemctl is-active spotify-proxy
-          docker compose ps
+          echo "=== Testing ==="
+          echo "Backend:"
+          curl -f http://localhost:5000/api/health 2>/dev/null && echo "✓ OK" || echo "✗ FAIL"
 
-          # Test the services
-          echo "=== Testing Services ==="
-          curl -f http://localhost:5000/api/health || echo "Backend health check failed"
-          curl -s http://localhost:3001/ | grep -o "Build.*#[0-9]" || echo "Build number not found in frontend HTML"
-          curl -f http://localhost:5001/spotify/search?q=test&type=artist&limit=1 || echo "Spotify proxy test failed"
+          echo "Frontend:"
+          curl -s http://localhost:3001/ 2>/dev/null | grep -q "Tune Vote" && echo "✓ OK" || echo "✗ FAIL"
 
-          # Test backend Spotify integration
-          echo "=== Testing Backend Spotify Integration ==="
-          curl -s http://localhost:5000/api/bands/search-external?q=AC | head -c 200 || echo "Backend Spotify search failed"
+          echo "Build number in HTML:"
+          curl -s http://localhost:3001/ 2>/dev/null | grep -o "#[0-9]\+" | head -1 || echo "Not found"
 
-          echo "Successfully deployed build #${{ github.run_number }}"
+          echo "=== Done: Build #${{ github.run_number }} ==="
