@@ -24,13 +24,19 @@ jobs:
         script: |
           cd /opt/tune-vote
           echo "Current directory: $(pwd)"
+          echo "Current user: $(whoami)"
           echo "Before pull - Latest commit: $(git rev-parse HEAD)"
 
+          # Fix git permissions and pull
+          sudo chown -R $(whoami):$(whoami) .git
+          git reset --hard HEAD
+          git clean -fd
           git pull origin main
           echo "After pull - Latest commit: $(git rev-parse HEAD)"
 
-          # Install Node.js dependencies for Spotify proxy
-          npm install --only=production
+          # Fix npm permissions and install dependencies for Spotify proxy
+          sudo rm -rf node_modules package-lock.json
+          npm install --omit=dev
 
           # Restart Spotify proxy service
           sudo systemctl restart spotify-proxy
