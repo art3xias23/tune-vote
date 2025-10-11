@@ -12,8 +12,13 @@ let tokenExpiresAt = null;
 const getSpotifyToken = async () => {
   // Check if we have a valid token
   if (spotifyAccessToken && tokenExpiresAt && new Date() < tokenExpiresAt) {
+    console.log('[Spotify] Using cached access token, expires at:', tokenExpiresAt);
     return spotifyAccessToken;
   }
+
+  console.log('[Spotify] Requesting new access token...');
+  console.log('[Spotify] Client ID exists:', !!process.env.SPOTIFY_CLIENT_ID);
+  console.log('[Spotify] Client Secret exists:', !!process.env.SPOTIFY_CLIENT_SECRET);
 
   try {
     const response = await axios.post(
@@ -32,9 +37,13 @@ const getSpotifyToken = async () => {
     spotifyAccessToken = response.data.access_token;
     // Set expiration time (subtract 60 seconds for buffer)
     tokenExpiresAt = new Date(Date.now() + (response.data.expires_in - 60) * 1000);
+    console.log('[Spotify] Access token obtained successfully, expires at:', tokenExpiresAt);
     return spotifyAccessToken;
   } catch (error) {
-    console.error('Error getting Spotify access token:', error.response?.data || error.message);
+    console.error('[Spotify API Error] Failed to get access token:');
+    console.error('[Spotify API Error] Status:', error.response?.status);
+    console.error('[Spotify API Error] Data:', JSON.stringify(error.response?.data));
+    console.error('[Spotify API Error] Message:', error.message);
     throw error;
   }
 };
@@ -80,7 +89,8 @@ router.get('/search-external', async (req, res) => {
   try {
     const { q } = req.query;
 
-    console.log('Searching Spotify for:', q);
+    console.log('[Spotify Search] Starting search for:', q);
+    console.log('[Spotify Search] Request from IP:', req.ip);
 
     if (!q) {
       return res.status(400).json({ error: 'Search query required' });
@@ -90,7 +100,9 @@ router.get('/search-external', async (req, res) => {
 
     try {
       // Get Spotify access token
+      console.log('[Spotify Search] Getting access token...');
       const accessToken = await getSpotifyToken();
+      console.log('[Spotify Search] Token obtained, making search request...');
 
       // Search for artists on Spotify
       const spotifySearchResponse = await axios.get('https://api.spotify.com/v1/search', {
@@ -105,8 +117,11 @@ router.get('/search-external', async (req, res) => {
         timeout: 5000
       });
 
+      console.log('[Spotify Search] Response received, status:', spotifySearchResponse.status);
+
       if (spotifySearchResponse.data.artists && spotifySearchResponse.data.artists.items) {
         const artists = spotifySearchResponse.data.artists.items;
+        console.log('[Spotify Search] Found', artists.length, 'artists');
 
         for (const artist of artists.slice(0, 3)) { // Get top 3 results
           const existingBand = await Band.findOne({ name: artist.name });
@@ -152,7 +167,11 @@ router.get('/search-external', async (req, res) => {
         }
       }
     } catch (spotifyError) {
-      console.error('Spotify search failed:', spotifyError.response?.data || spotifyError.message);
+      console.error('[Spotify API Error] Search failed:');
+      console.error('[Spotify API Error] Status:', spotifyError.response?.status);
+      console.error('[Spotify API Error] Data:', JSON.stringify(spotifyError.response?.data));
+      console.error('[Spotify API Error] Message:', spotifyError.message);
+      console.error('[Spotify API Error] Full error:', spotifyError);
 
       // If Spotify fails, provide manual option
       searchResults.push({

@@ -1,0 +1,61 @@
+// Collect logs from Docker containers
+loki.source.docker "default" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.docker.default.targets
+  forward_to = [loki.process.json.receiver]
+}
+
+// Discover Docker containers
+discovery.docker "default" {
+  host = "unix:///var/run/docker.sock"
+  filter {
+    name = "label"
+    values = ["logging=tune-vote"]
+  }
+}
+
+// Process JSON logs
+loki.process "json" {
+  forward_to = [loki.write.endpoint.receiver]
+
+  // Parse Docker json logs
+  stage.json {
+    expressions = {
+      output = "log",
+      stream = "stream",
+      time   = "time",
+    }
+  }
+
+  // Use timestamp from Docker
+  stage.timestamp {
+    source = "time"
+    format = "RFC3339Nano"
+  }
+
+  // Set the output from extracted log field
+  stage.output {
+    source = "output"
+  }
+
+  // Extract container name as label
+  stage.docker {}
+
+  // Add labels for better filtering
+  stage.regex {
+    expression = "\\[(?P<log_type>[^\\]]+)\\]"
+  }
+
+  stage.labels {
+    values = {
+      log_type = "",
+    }
+  }
+}
+
+// Send logs to Loki
+loki.write "endpoint" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

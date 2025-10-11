@@ -54,6 +54,14 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    labels:
+      - "logging=tune-vote"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "logging"
 
   # Frontend React App
   frontend:
@@ -76,10 +84,65 @@ services:
       retries: 3
       start_period: 40s
 
+  # Loki for log aggregation
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: tune-vote-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki-config.yaml:/etc/loki/local-config.yaml
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - tune-vote-network
+
+  # Alloy for log collection
+  alloy:
+    image: grafana/alloy:latest
+    container_name: tune-vote-alloy
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./alloy-config.river:/etc/alloy/config.river
+    command: run --server.http.listen-addr=0.0.0.0:12345 /etc/alloy/config.river
+    depends_on:
+      - loki
+    networks:
+      - tune-vote-network
+    ports:
+      - "12345:12345"
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: tune-vote-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=tune-vote
+      - GF_SECURITY_ADMIN_PASSWORD=tune-vote123
+      - GF_SERVER_ROOT_URL=https://grafana.pragmatino.xyz
+      - GF_INSTALL_PLUGINS=
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+    depends_on:
+      - loki
+    networks:
+      - tune-vote-network
+
 volumes:
   mongodb_data:
     driver: local
   mongodb_config:
+    driver: local
+  loki_data:
+    driver: local
+  grafana_data:
     driver: local
 
 networks:
