@@ -24,17 +24,51 @@ jobs:
         script: |
           cd /opt/tune-vote
           echo "=== Starting Deployment ==="
-          echo "Directory: $(pwd)"
           echo "User: $(whoami)"
           echo "Before: $(git rev-parse HEAD 2>/dev/null || echo 'no git')"
 
-          # Use GitHub token for reliable git operations
-          export GIT_ASKPASS=/bin/true
-          git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/art3xias23/tune-vote.git
-          git fetch origin main
-          git reset --hard origin/main
-          git clean -fd
-          echo "After: $(git rev-parse HEAD)"
+          # Detailed debugging of git directory
+          echo "=== Debugging Git Issues ==="
+          echo "Git directory ownership:"
+          ls -la .git/ | head -10
+          echo ""
+          echo "Objects directory:"
+          ls -la .git/objects/ | head -5
+          echo ""
+          echo "Current user info:"
+          id
+          echo ""
+          echo "Disk space:"
+          df -h .
+          echo ""
+
+          # Try to fix permissions with detailed output
+          echo "Attempting to fix .git permissions..."
+          chmod -v u+w .git/objects 2>&1 || echo "chmod .git/objects failed"
+          chmod -v u+w .git/objects/* 2>&1 || echo "chmod .git/objects/* failed"
+
+          # Test git operations step by step
+          echo "=== Testing Git Operations ==="
+
+          echo "1. Setting remote URL..."
+          git remote set-url origin https://${{ secrets.GH_TOKEN }}@github.com/art3xias23/tune-vote.git 2>&1 || echo "Remote set failed"
+
+          echo "2. Testing git fetch..."
+          git fetch origin main 2>&1 || echo "Fetch failed - trying alternative"
+
+          if [ $? -ne 0 ]; then
+            echo "Fetch failed, trying to reinitialize git..."
+            rm -rf .git
+            git init
+            git remote add origin https://${{ secrets.GH_TOKEN }}@github.com/art3xias23/tune-vote.git
+            git fetch origin main
+            git checkout -b main origin/main
+          else
+            echo "3. Testing git reset..."
+            git reset --hard origin/main 2>&1 || echo "Reset failed"
+          fi
+
+          echo "Final commit: $(git rev-parse HEAD)"
 
           # Deploy containers with build info
           echo "=== Building and Starting Containers ==="
