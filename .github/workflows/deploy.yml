@@ -23,24 +23,43 @@ jobs:
         command_timeout: 20m
         script: |
           cd /opt/tune-vote
+          echo "Current directory: $(pwd)"
+          echo "Before pull - Latest commit: $(git rev-parse HEAD)"
+
           git pull origin main
+          echo "After pull - Latest commit: $(git rev-parse HEAD)"
 
           # Install Node.js dependencies for Spotify proxy
           npm install --only=production
 
           # Restart Spotify proxy service
           sudo systemctl restart spotify-proxy
+          echo "Spotify proxy status: $(systemctl is-active spotify-proxy)"
 
           # Set build number and restart Docker containers
-          export REACT_APP_BUILD_NUMBER=${{ github.run_number }}
-          export REACT_APP_BUILD_COMMIT=${{ github.sha }}
+          echo "Starting deployment - Build #${{ github.run_number }} - Commit ${{ github.sha }}"
+
+          # Stop containers first
           docker compose down
-          docker compose up -d --build
+
+          # Build and start with environment variables
+          REACT_APP_BUILD_NUMBER=${{ github.run_number }} REACT_APP_BUILD_COMMIT=${{ github.sha }} docker compose up -d --build
+
+          # Clean up
           docker system prune -f
 
+          # Wait for containers to be ready
+          sleep 15
+
           # Verify services are running
-          sleep 10
+          echo "=== Service Status ==="
           systemctl is-active spotify-proxy
           docker compose ps
 
-          echo "Deployed build #${{ github.run_number }}"
+          # Test the services
+          echo "=== Testing Services ==="
+          curl -f http://localhost:5000/api/health || echo "Backend health check failed"
+          curl -f http://localhost:3001/ || echo "Frontend health check failed"
+          curl -f http://localhost:5001/spotify/search?q=test&type=artist&limit=1 || echo "Spotify proxy test failed"
+
+          echo "Successfully deployed build #${{ github.run_number }}"
