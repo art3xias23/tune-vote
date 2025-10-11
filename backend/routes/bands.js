@@ -34,23 +34,25 @@ const getSpotifyToken = async () => {
     ).toString('base64');
 
     console.log('[Spotify] Auth string prepared, length:', authString.length);
-    console.log('[Spotify] Making token request to:', 'https://accounts.spotify.com/api/token');
 
     // Use URLSearchParams for proper form encoding
     const params = new URLSearchParams();
     params.append('grant_type', 'client_credentials');
 
-    const response = await axios.post(
-      'https://accounts.spotify.com/api/token',
-      params,
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Basic ' + authString
-        },
-        timeout: 10000
-      }
-    );
+    const tokenUrl = 'https://accounts.spotify.com/api/token';
+    console.log('[Spotify] Making token request to:', tokenUrl);
+    console.log('[Spotify] Request body:', params.toString());
+
+    const response = await axios({
+      method: 'POST',
+      url: tokenUrl,
+      data: params.toString(),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic ' + authString
+      },
+      timeout: 10000
+    });
 
     spotifyAccessToken = response.data.access_token;
     // Set expiration time (subtract 60 seconds for buffer)
@@ -60,8 +62,16 @@ const getSpotifyToken = async () => {
   } catch (error) {
     console.error('[Spotify API Error] Failed to get access token:');
     console.error('[Spotify API Error] Status:', error.response?.status);
+    console.error('[Spotify API Error] Status Text:', error.response?.statusText);
     console.error('[Spotify API Error] Data:', JSON.stringify(error.response?.data));
+    console.error('[Spotify API Error] Request URL:', error.config?.url);
+    console.error('[Spotify API Error] Request Headers:', JSON.stringify(error.config?.headers));
     console.error('[Spotify API Error] Message:', error.message);
+
+    // Check if it's trying to use a proxy or wrong URL
+    if (error.config?.url) {
+      console.error('[Spotify API Error] Full URL attempted:', error.config.url);
+    }
     throw error;
   }
 };
