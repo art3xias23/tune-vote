@@ -91,6 +91,6 @@ app.get('/spotify/artist/:id/top-tracks', async (req, res) => {
 });
 
 const PORT = process.env.SPOTIFY_PROXY_PORT || 5001;
-app.listen(PORT, '127.0.0.1', () => {
-  console.log('Spotify proxy running on port ' + PORT);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log('Spotify proxy running on 0.0.0.0:' + PORT);
 });

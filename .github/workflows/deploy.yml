@@ -97,4 +97,4 @@ jobs:
           fi
 
     - name: 🎉 Deployment Complete
-      run: echo "::notice::🎉 Successfully deployed build #${{ github.run_number }} to production!"
+      run: echo "::notice::🎉 Successfully deployed build \#${{ github.run_number }} to production!"
