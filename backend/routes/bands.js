@@ -17,8 +17,33 @@ const router = express.Router();
 let spotifyAccessToken = null;
 let tokenExpiresAt = null;
 
-// Using host-based Spotify proxy via Docker extra_hosts mapping
-const SPOTIFY_PROXY_URL = 'http://host.docker.internal:5001';
+// Using host-based Spotify proxy - try multiple connection methods
+const SPOTIFY_PROXY_URLS = [
+  'http://host.docker.internal:5001',
+  'http://172.17.0.1:5001', // Docker bridge gateway
+  'http://91.98.84.35:5001'  // Direct server IP
+];
+
+// Function to try multiple proxy URLs
+async function makeProxyRequest(endpoint, params = {}, timeout = 10000) {
+  for (const baseUrl of SPOTIFY_PROXY_URLS) {
+    try {
+      console.log(`[Spotify Proxy] Trying ${baseUrl}${endpoint}`);
+      const response = await axios.get(`${baseUrl}${endpoint}`, {
+        params,
+        timeout: timeout
+      });
+      console.log(`[Spotify Proxy] Success with ${baseUrl}`);
+      return response;
+    } catch (error) {
+      console.log(`[Spotify Proxy] Failed ${baseUrl}: ${error.message}`);
+      continue;
+    }
+  }
+  throw new Error('All proxy URLs failed');
+}
+
+const SPOTIFY_PROXY_URL = SPOTIFY_PROXY_URLS[0]; // Keep for legacy test endpoint
 
 const getArtistImage = (images) => {
   if (!images || images.length === 0) return '/default-band.png';
@@ -105,13 +130,10 @@ router.get('/search-external', async (req, res) => {
       // Search artists using host proxy
       console.log('[Spotify Search] Using proxy to search for:', q);
 
-      const spotifySearchResponse = await axios.get(`${SPOTIFY_PROXY_URL}/spotify/search`, {
-        params: {
-          q: q,
-          type: 'artist',
-          limit: 5
-        },
-        timeout: 10000
+      const spotifySearchResponse = await makeProxyRequest('/spotify/search', {
+        q: q,
+        type: 'artist',
+        limit: 5
       });
 
       console.log('[Spotify Search] Proxy response received');
@@ -126,12 +148,10 @@ router.get('/search-external', async (req, res) => {
           // Get top tracks using proxy
           let topTracks = [];
           try {
-            const topTracksResponse = await axios.get(
-              `${SPOTIFY_PROXY_URL}/spotify/artist/${artist.id}/top-tracks`,
-              {
-                params: { market: 'US' },
-                timeout: 5000
-              }
+            const topTracksResponse = await makeProxyRequest(
+              `/spotify/artist/${artist.id}/top-tracks`,
+              { market: 'US' },
+              5000
             );
 
             if (topTracksResponse.data.tracks) {
