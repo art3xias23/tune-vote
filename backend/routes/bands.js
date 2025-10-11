@@ -19,6 +19,7 @@ const getSpotifyToken = async () => {
   console.log('[Spotify] Requesting new access token...');
   console.log('[Spotify] Client ID exists:', !!process.env.SPOTIFY_CLIENT_ID);
   console.log('[Spotify] Client Secret exists:', !!process.env.SPOTIFY_CLIENT_SECRET);
+  console.log('[Spotify] Client ID length:', process.env.SPOTIFY_CLIENT_ID?.length);
 
   if (!process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
     console.error('[Spotify API Error] Missing credentials!');
@@ -28,16 +29,26 @@ const getSpotifyToken = async () => {
   }
 
   try {
+    const authString = Buffer.from(
+      process.env.SPOTIFY_CLIENT_ID + ':' + process.env.SPOTIFY_CLIENT_SECRET
+    ).toString('base64');
+
+    console.log('[Spotify] Auth string prepared, length:', authString.length);
+    console.log('[Spotify] Making token request to:', 'https://accounts.spotify.com/api/token');
+
+    // Use URLSearchParams for proper form encoding
+    const params = new URLSearchParams();
+    params.append('grant_type', 'client_credentials');
+
     const response = await axios.post(
       'https://accounts.spotify.com/api/token',
-      'grant_type=client_credentials',
+      params,
       {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': 'Basic ' + Buffer.from(
-            process.env.SPOTIFY_CLIENT_ID + ':' + process.env.SPOTIFY_CLIENT_SECRET
-          ).toString('base64')
-        }
+          'Authorization': 'Basic ' + authString
+        },
+        timeout: 10000
       }
     );
 
