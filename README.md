@@ -1,112 +1,99 @@
-# Tune Vote 🎵
+# 🎵 Tune Vote
 
-A modern music voting application for small groups, built with React and Node.js.
+A modern music voting application where band members can discover and vote on their favorite artists. Built with React, Node.js, MongoDB, and deployed using Docker containers.
 
-## Quick Start with Docker 🐳
+## 🏗️ Architecture
 
-**Easiest way to run the application:**
+- **Frontend**: React.js SPA with Tailwind CSS, served via Nginx
+- **Backend**: Node.js API with Express and MongoDB
+- **Database**: MongoDB with authentication
+- **Spotify Proxy**: Dedicated Node.js service for Spotify API integration
+- **Monitoring**: Grafana + Loki + Alloy stack for logging and visualization
 
+## 🚀 Deployment
+
+### GitHub Actions Workflow
+
+Automated deployment triggers on:
+- Push to `main` branch
+- Merged pull requests
+
+Deployment steps:
+1. **Update Code**: Git pull from repository
+2. **Install Dependencies**: npm install and restart services
+3. **Build Containers**: Docker Compose build with version tags
+4. **Start Services**: Deploy containers with health checks
+5. **Health Verification**: Test backend and frontend connectivity
+
+### Required GitHub Secrets
+- `HOST`: Production server hostname
+- `USERNAME`: SSH username
+- `SSH_PRIVATE_KEY`: SSH private key
+- `PORT`: SSH port
+- `GH_TOKEN`: GitHub token
+
+## 🐳 Docker Development
+
+### Start Services
 ```bash
-# Clone the repository
-git clone https://github.com/art3xias23/tune-vote.git
-cd tune-vote
+# Start all services
+docker compose up -d
 
-# Start with Docker Compose
-docker-compose up
+# View logs
+docker compose logs -f
 
-# Or for production mode
-docker-compose -f docker-compose.prod.yml up
+# Stop services
+docker compose down
 ```
 
-**Access the application:**
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:5000
+### Service Ports
+- Frontend: `3001:80`
+- Backend: `5000:5000`
+- MongoDB: `27017:27017`
+- Grafana: `3000:3000`
+- Loki: `3100:3100`
 
-## Manual Setup (Development)
+## 🛠️ Local Development
 
-### Prerequisites
-- Node.js 18+
-- MongoDB (optional for development)
-
-### Quick Start
 ```bash
 # Install dependencies
-cd backend && npm install
-cd ../frontend && npm install
+npm install
 
-# Start backend (port 5000)
-cd backend && npm start
+# Start all services
+npm run dev
 
-# Start frontend (port 3001)
-cd frontend && npm start
+# Individual services
+npm run frontend  # :3000
+npm run backend   # :5000
+npm run proxy     # :5001
 ```
 
-The app works without MongoDB for development - it uses in-memory storage.
+## 🔍 Debugging with Docker Compose
 
-## Features
-- **Simple User Selection**: Choose from 3 pre-defined users (Tino, Misho, Tedak)
-- **Band Database**: Search and add bands
-- **Group Voting**: Vote for bands, runoff system, winner ratings
-- **Modern UI**: Built with Tailwind CSS and glassmorphism design
-- **Docker Ready**: Full containerization support
-
-## Docker Configurations
-
-### Development Mode
 ```bash
-docker-compose up
-```
-- Hot reloading enabled
-- MongoDB optional
-- Ports: Frontend 3000, Backend 5000
+# Check service status
+docker compose ps
 
-### Production Mode
-```bash
-docker-compose -f docker-compose.prod.yml up
-```
-- Optimized builds
-- MongoDB required
-- Nginx reverse proxy
-- Port: 80
+# View service logs
+docker compose logs backend
+docker compose logs frontend
+docker compose logs mongodb
 
-### Local Development (without MongoDB)
-```bash
-docker-compose -f docker-compose.local.yml up
-```
-- No MongoDB dependency
-- In-memory storage
-- Perfect for testing
+# Follow real-time logs
+docker compose logs -f --tail=100
 
-## Environment Variables
+# Restart service
+docker compose restart backend
 
-Create `backend/.env`:
-```env
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/tunevote
-CLIENT_URL=http://localhost:3000
+# Container shell access
+docker exec -it tune-vote-backend sh
+docker exec -it tune-vote-mongodb mongosh
 ```
 
-## Project Structure
-```
-tune-vote/
-├── backend/              # Node.js API
-├── frontend/            # React app
-├── docker-compose.yml   # Development
-├── docker-compose.prod.yml # Production
-└── docker-compose.local.yml # Local dev
-```
+## 📊 Monitoring
 
-## Troubleshooting
+- **Grafana**: Dashboard visualization at configured endpoint
+- **Loki**: Centralized log aggregation
+- **Alloy**: Automatic Docker container log collection
 
-**Docker issues:**
-- `docker system prune` to clean up
-- Check ports aren't already in use
-- Ensure Docker daemon is running
-
-**Local development:**
-- Backend runs on port 5000, frontend on 3001
-- No database required for basic functionality
-- Check console for any JavaScript errors
-
-## License
-MIT
+Default Grafana credentials: `tune-vote` / `tune-vote123`
