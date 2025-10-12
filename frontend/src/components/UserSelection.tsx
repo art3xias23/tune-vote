@@ -10,9 +10,9 @@ const UserSelection: React.FC = () => {
   const [error, setError] = useState('');
 
   const users = [
-    { username: 'Tino' as const, name: 'Tino', avatar: '🎸', description: 'Admin & Lead Guitarist' },
-    { username: 'Misho' as const, name: 'Misho', avatar: '🎹', description: 'Keyboard Virtuoso' },
-    { username: 'Tedak' as const, name: 'Tedak', avatar: '🥁', description: 'Rhythm Master' }
+    { username: 'Tino' as const, name: 'Tino', avatar: '🎸', description: 'Veteran' },
+    { username: 'Misho' as const, name: 'Misho', avatar: '🎹', description: 'Mladok' },
+    { username: 'Tedak' as const, name: 'Tedak', avatar: '🥁', description: 'Levent' }
   ];
 
   const userPins = {
