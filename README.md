@@ -1,8 +1,8 @@
-# 🎵 Tune Vote
+# Tune Vote
 
 A modern music voting application where band members can discover and vote on their favorite artists. Built with React, Node.js, MongoDB, and deployed using Docker containers.
 
-## 🏗️ Architecture
+## Architecture
 
 - **Frontend**: React.js SPA with Tailwind CSS, served via Nginx
 - **Backend**: Node.js API with Express and MongoDB
@@ -10,7 +10,7 @@ A modern music voting application where band members can discover and vote on th
 - **Spotify Proxy**: Dedicated Node.js service for Spotify API integration
 - **Monitoring**: Grafana + Loki + Alloy stack for logging and visualization
 
-## 🚀 Deployment
+## Deployment
 
 ### GitHub Actions Workflow
 
@@ -32,7 +32,7 @@ Deployment steps:
 - `PORT`: SSH port
 - `GH_TOKEN`: GitHub token
 
-## 🐳 Docker Development
+## Docker Development
 
 ### Start Services
 ```bash
@@ -53,7 +53,7 @@ docker compose down
 - Grafana: `3000:3000`
 - Loki: `3100:3100`
 
-## 🛠️ Local Development
+## Local Development
 
 ```bash
 # Install dependencies
@@ -68,7 +68,7 @@ npm run backend   # :5000
 npm run proxy     # :5001
 ```
 
-## 🔍 Debugging with Docker Compose
+## Debugging with Docker Compose
 
 ```bash
 # Check service status
@@ -90,7 +90,7 @@ docker exec -it tune-vote-backend sh
 docker exec -it tune-vote-mongodb mongosh
 ```
 
-## 📊 Monitoring
+## Monitoring
 
 - **Grafana**: Dashboard visualization at configured endpoint
 - **Loki**: Centralized log aggregation
