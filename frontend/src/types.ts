@@ -42,7 +42,7 @@ export interface Vote {
   _id: string;
   voteNumber: number;
   createdBy: string;
-  status: 'active' | 'runoff' | 'rating' | 'completed' | 'tied';
+  status: 'active' | 'runoff' | 'rating' | 'completed' | 'tied' | 'archived';
   selectedBands: Band[];
   votes: VoteSubmission[];
   winner?: Band;
