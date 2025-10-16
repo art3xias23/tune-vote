@@ -1,17 +1,17 @@
 const express = require('express');
 const Vote = require('../models/Vote');
 const Band = require('../models/Band');
+const { logUserAction } = require('../utils/logger');
 
 const router = express.Router();
 
 // Get all votes
 router.get('/', async (req, res) => {
   try {
-    const votes = await Vote.find({status: { $ne: 'archived' }})
+    const votes = await Vote.find({})
       .populate('selectedBands')
       .populate('winner')
       .sort({ createdAt: -1 });
-
 
     res.json(votes);
   } catch (error) {
@@ -89,7 +89,10 @@ router.post('/', async (req, res) => {
 
     await vote.save();
     await vote.populate('selectedBands');
-    
+
+    // Log the vote creation
+    logUserAction.vote.create(username, vote._id, bands);
+
     res.status(201).json(vote);
 
     console.log("Vote created:", vote);
@@ -131,8 +134,9 @@ router.post('/:id/submit', async (req, res) => {
     }
 
     // Add votes for each selected band
+    const votedBandDetails = [];
     for (const bandId of bandIds) {
-      const validBand = vote.selectedBands.some(b => b._id.toString() === bandId);
+      const validBand = vote.selectedBands.find(b => b._id.toString() === bandId);
       if (!validBand) {
         return res.status(400).json({ error: 'Invalid band selection' });
       }
@@ -141,7 +145,11 @@ router.post('/:id/submit', async (req, res) => {
         userId: username,
         bandId: bandId
       });
+      votedBandDetails.push({ id: bandId, name: validBand.name });
     }
+
+    // Log the vote submission
+    logUserAction.vote.submit(username, vote._id, votedBandDetails, vote.voteNumber || 0);
 
     await vote.save();
 
@@ -167,6 +175,10 @@ router.delete('/:id', async (req, res) => {
     if (!vote) {
       return res.status(404).json({ error: 'Vote not found' });
     }
+
+    // Log the vote deletion (need username from request)
+    const username = req.query.username || 'Unknown';
+    logUserAction.vote.delete(username, vote._id, vote.voteNumber || 0);
 
     await Vote.deleteOne({ _id: req.params.id });
     res.json({ message: 'Vote deleted successfully' });
@@ -213,6 +225,12 @@ router.post('/:id/rating', async (req, res) => {
     // Calculate average rating
     const totalScore = vote.ratings.reduce((sum, r) => sum + r.score, 0);
     vote.averageRating = totalScore / vote.ratings.length;
+
+    // Log the rating submission
+    await vote.populate('winner');
+    if (vote.winner) {
+      logUserAction.vote.rate(username, vote._id, parseInt(score), vote.winner, vote.voteNumber || 0);
+    }
 
     // Check if all users have rated
     if (vote.ratings.length === 3) {
@@ -281,15 +299,20 @@ async function processVoteResults(vote) {
     console.log(`Single winner found: ${winners[0]}`); // Log single winner
     vote.winner = winners[0];
     vote.status = 'rating'; // Move to rating phase
+
+    // Log vote completion with winner
+    await vote.populate('winner');
+    logUserAction.vote.completed(vote._id, vote.voteNumber || 0, vote.winner, false);
   } else {
-    // For ties, pick first winner and move to rating phase
-    vote.status = 'archived'; // Mark current vote as completed
-    //vote.winner = null; // No winner for this round
-    //vote.completedAt = new Date();
+    // For ties, mark current vote as archived
+    vote.status = 'archived'; // Mark current vote as archived
+
+    // Log tie occurrence
+    logUserAction.vote.completed(vote._id, vote.voteNumber || 0, null, true);
 
     // Create a new vote with tied bands
     const tiedBands = winners;
-    //voteCount = {};
+    const tiedBandObjects = vote.selectedBands.filter(b => tiedBands.includes(b._id.toString()));
 
     const newVote = new Vote({
       createdBy: vote.createdBy,
@@ -299,6 +322,9 @@ async function processVoteResults(vote) {
     console.log('Tied bands:', tiedBands); // Log tied band details
     await newVote.save();
     await newVote.populate('selectedBands');
+
+    // Log tie-breaker creation
+    logUserAction.vote.tieBreaker(newVote._id, vote._id, tiedBandObjects);
   }
 
   await vote.save();

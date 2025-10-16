@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const mongoose = require('mongoose');
 const User = require('./models/User');
+const { logUserAction } = require('./utils/logger');
 require('dotenv').config();
 
 const app = express();
@@ -15,6 +16,9 @@ console.log('[Server] Environment:', process.env.NODE_ENV);
 console.log('[Server] Port:', PORT);
 console.log('[Server] Spotify Client ID exists:', !!process.env.SPOTIFY_CLIENT_ID);
 console.log('[Server] Spotify Client Secret exists:', !!process.env.SPOTIFY_CLIENT_SECRET);
+
+// Log system startup
+logUserAction.system.startup();
 
 app.use(helmet());
 
@@ -52,6 +56,7 @@ if (mongoUri.startsWith('mongodb://') || mongoUri.startsWith('mongodb+srv://')) 
 
   mongoose.connection.on('error', (err) => {
     console.warn('MongoDB connection error, app will continue without database:', err.message);
+    logUserAction.system.error(err, { action: 'database.connection' });
   });
 } else {
   console.log('Running without MongoDB - using in-memory data for development');
@@ -62,6 +67,34 @@ const votesRouter = require('./routes/votes');
 
 app.use('/api/bands', bandsRouter);
 app.use('/api/votes', votesRouter);
+
+// User authentication endpoint with logging
+app.post('/api/auth/select-user', async (req, res) => {
+  try {
+    const { username } = req.body;
+
+    if (!username || !['Tino', 'Misho', 'Tedak'].includes(username)) {
+      return res.status(400).json({ error: 'Invalid username' });
+    }
+
+    // Log user selection
+    logUserAction.auth.select(username);
+
+    // Return user data (simplified without actual DB lookup for now)
+    const userData = {
+      username,
+      name: username,
+      avatar: `/avatars/${username.toLowerCase()}.jpg`,
+      description: `${username} user`,
+      isAdmin: false
+    };
+
+    res.json(userData);
+  } catch (error) {
+    logUserAction.system.error(error, { action: 'auth.select' });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 app.get('/', (req, res) => {
   res.json({ message: 'Tune Vote API Server' });
@@ -86,4 +119,15 @@ app.get('/api/health', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
+});
+
+// Graceful shutdown handling
+process.on('SIGINT', () => {
+  logUserAction.system.shutdown();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  logUserAction.system.shutdown();
+  process.exit(0);
 });

@@ -17,13 +17,21 @@ api.interceptors.request.use((config) => {
 });
 
 export const bandAPI = {
-  search: (query: string) => api.get<Band[]>(`/api/bands/search?q=${query}`),
-  searchExternal: (query: string) =>
-    api.get<any[]>(`/api/bands/search-external?q=${query}`),
+  search: (query: string) => {
+    const username = localStorage.getItem('selectedUser');
+    return api.get<Band[]>(`/api/bands/search?q=${query}&username=${username}`);
+  },
+  searchExternal: (query: string) => {
+    const username = localStorage.getItem('selectedUser');
+    return api.get<any[]>(`/api/bands/search-external?q=${query}&username=${username}`);
+  },
   add: (data: { name: string; image: string; spotifyUri?: string; spotifyId?: string; genres?: string[]; username?: string }) =>
-    api.post<Band>('/api/bands', data),
+    api.post<Band>('/api/bands', { ...data, username: data.username || localStorage.getItem('selectedUser') }),
   getAll: () => api.get<Band[]>('/api/bands'),
-  delete: (bandId: string) => api.delete<{ message: string }>(`/api/bands/${bandId}`),
+  delete: (bandId: string) => {
+    const username = localStorage.getItem('selectedUser');
+    return api.delete<{ message: string }>(`/api/bands/${bandId}?username=${username}`);
+  },
 };
 
 export const voteAPI = {
@@ -36,7 +44,10 @@ export const voteAPI = {
   submitRating: (voteId: string, score: number, username?: string) =>
     api.post(`/api/votes/${voteId}/rating`, { score, username: username || localStorage.getItem('selectedUser') }),
   getById: (id: string) => api.get<Vote>(`/api/votes/${id}`),
-  deleteVote: (id: string) => api.delete(`/api/votes/${id}`),
+  deleteVote: (id: string) => {
+    const username = localStorage.getItem('selectedUser');
+    return api.delete(`/api/votes/${id}?username=${username}`);
+  },
   submitVoteMultiple: (voteId: string, bandIds: string[], username?: string) =>
     api.post(`/api/votes/${voteId}/submit`, {
       bandIds,

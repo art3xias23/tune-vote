@@ -3,6 +3,7 @@ const axios = require('axios');
 const https = require('https');
 const Band = require('../models/Band');
 const { format } = require('path');
+const { logUserAction } = require('../utils/logger');
 
 // Create axios instance with IPv4 forced
 const axiosInstance = axios.create({
@@ -97,7 +98,7 @@ router.get('/test-spotify', async (req, res) => {
 
 router.get('/search', async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, username } = req.query;
     if (!q) {
       return res.status(400).json({ error: 'Search query required' });
     }
@@ -105,6 +106,11 @@ router.get('/search', async (req, res) => {
     const bands = await Band.find({
       name: { $regex: q, $options: 'i' }
     }).limit(10);
+
+    // Log local search if username provided
+    if (username) {
+      logUserAction.band.search(username, q, bands.length);
+    }
 
     res.json(bands);
   } catch (error) {
@@ -115,7 +121,7 @@ router.get('/search', async (req, res) => {
 
 router.get('/search-external', async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, username } = req.query;
 
     console.log('[Spotify Search] Starting search for:', q);
     console.log('[Spotify Search] Request from IP:', req.ip);
@@ -201,6 +207,11 @@ router.get('/search-external', async (req, res) => {
       });
     }
 
+    // Log the search action
+    if (username) {
+      logUserAction.band.search(username, q, searchResults.length);
+    }
+
     res.json(searchResults);
   } catch (error) {
     console.error('Error searching external sources:', error);
@@ -234,6 +245,10 @@ router.post('/', async (req, res) => {
 
     await band.save();
 
+    // Log the band creation
+    const source = spotifyId ? 'spotify' : 'manual';
+    logUserAction.band.create(username || 'Unknown', band._id, band.name, source);
+
     res.status(201).json(band);
   } catch (error) {
     console.error('Error adding band:', error);
@@ -249,6 +264,10 @@ router.delete('/:id', async (req, res) => {
     }
 
     // No user auth anymore - anyone can delete
+    const username = req.query.username || 'Unknown';
+
+    // Log the deletion before actually deleting
+    logUserAction.band.delete(username, band._id, band.name);
 
     await Band.findByIdAndDelete(req.params.id);
     res.json({ message: 'Band deleted successfully' });
