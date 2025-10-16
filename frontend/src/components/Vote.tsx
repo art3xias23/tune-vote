@@ -393,6 +393,8 @@ const submitVote = async (voteId: string) => {
                 const isActive = vote.status === 'active';
                 const isRating = vote.status === 'rating';
                 const isCompleted = vote.status === 'completed';
+                const isArchived = vote.status === 'archived';
+                const isTied = isArchived && !vote.winner;
                 return (
                   <div
                     key={vote._id}
@@ -402,14 +404,32 @@ const submitVote = async (voteId: string) => {
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                       <div>
-                        <h4 className="mb-2 text-slate-900 dark:text-slate-100 font-semibold">
+                        <h4 className="mb-2 text-slate-900 dark:text-slate-100 font-semibold" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           Vote #{vote.voteNumber || votes.indexOf(vote) + 1}
+                          {isTied && (
+                            <span style={{
+                              backgroundColor: '#ef4444',
+                              color: 'white',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold'
+                            }}>
+                              TIE
+                            </span>
+                          )}
                         </h4>
                         <p className="text-slate-600 dark:text-slate-400 text-sm">
                           Created by <strong>{vote.createdBy}</strong> •
                           {isCompleted && <span style={{ color: '#28a745' }}> Completed</span>}
-                          {isRating && <span style={{ color: '#9333ea' }}> Rating Phase</span>}
+                          {isRating && (
+                            <>
+                              <span style={{ color: '#9333ea' }}> Rating Phase</span>
+                              <span> • {vote.ratings.length} / 3 rated</span>
+                            </>
+                          )}
                           {isActive && <span> {new Set(vote.votes.map(v => v.userId)).size} / 3 members voted</span>}
+                          {isTied && <span style={{ color: '#ef4444' }}> Ended in tie</span>}
                         </p>
 
                         {/* Band Preview */}
@@ -1004,6 +1024,232 @@ const submitVote = async (voteId: string) => {
                       {submitting ? 'Submitting...' : 'Submit Rating'}
                     </button>
                   </div>
+                </div>
+              </div>
+            ) : (selectedVote.status === 'archived' && !selectedVote.winner) ? (
+              // TIED VOTE VIEW - Show tie results
+              <div>
+                {/* Tie Results Header */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                  padding: '2rem',
+                  borderRadius: '16px',
+                  marginBottom: '2rem',
+                  textAlign: 'center',
+                  border: '2px solid #ef4444'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>⚖️</div>
+                  <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.8rem', fontWeight: '700', color: '#991b1b' }}>
+                    This Vote Ended in a Tie!
+                  </h3>
+                  <p style={{ margin: 0, color: '#7f1d1d', fontSize: '1.1rem' }}>
+                    Multiple bands received equal votes • A tie-breaker vote was created
+                  </p>
+                </div>
+
+                {/* Band Results - Show tied bands */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '2rem',
+                  marginBottom: '2rem'
+                }}>
+                  {selectedVote.selectedBands
+                    .map(band => ({
+                      ...band,
+                      voteCount: getVoteCount(selectedVote, band._id),
+                      voters: selectedVote.votes.filter(v => v.bandId === band._id)
+                    }))
+                    .sort((a, b) => b.voteCount - a.voteCount)
+                    .map((band, index) => {
+                      const percentage = (band.voteCount / Math.max(selectedVote.votes.length, 1)) * 100;
+                      const maxVotes = Math.max(...selectedVote.selectedBands.map(b => getVoteCount(selectedVote, b._id)));
+                      const isTied = band.voteCount === maxVotes && band.voteCount > 0;
+
+                      return (
+                        <div key={band._id} style={{
+                          position: 'relative',
+                          background: 'white',
+                          borderRadius: '20px',
+                          overflow: 'hidden',
+                          boxShadow: isTied
+                            ? '0 8px 30px rgba(239, 68, 68, 0.25)'
+                            : '0 4px 20px rgba(0,0,0,0.08)',
+                          border: isTied ? '3px solid #ef4444' : '3px solid transparent',
+                          transform: isTied ? 'scale(1.02)' : 'scale(1)',
+                          transition: 'all 0.3s ease'
+                        }}>
+                          {/* Position Badge */}
+                          <div style={{
+                            position: 'absolute',
+                            top: '15px',
+                            left: '15px',
+                            width: '50px',
+                            height: '50px',
+                            borderRadius: '50%',
+                            background: isTied
+                              ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                              : 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontWeight: 'bold',
+                            fontSize: '1.4rem',
+                            zIndex: 2,
+                            boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+                          }}>
+                            {isTied ? '=' : '#' + (index + 1)}
+                          </div>
+
+                          {/* Tied Badge */}
+                          {isTied && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '15px',
+                              right: '15px',
+                              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                              color: 'white',
+                              padding: '8px 16px',
+                              borderRadius: '20px',
+                              fontSize: '0.9rem',
+                              fontWeight: '700',
+                              zIndex: 2,
+                              boxShadow: '0 4px 15px rgba(239, 68, 68, 0.4)'
+                            }}>
+                              TIED
+                            </div>
+                          )}
+
+                          {/* Band Image */}
+                          <div style={{
+                            position: 'relative',
+                            width: '100%',
+                            paddingBottom: '100%',
+                            overflow: 'hidden',
+                            background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.8) 100%)'
+                          }}>
+                            <img
+                              src={band.image}
+                              alt={band.name}
+                              style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover'
+                              }}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/default-band.png';
+                              }}
+                            />
+
+                            {/* Band Name Overlay */}
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              padding: '1.5rem',
+                              background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.9) 100%)'
+                            }}>
+                              <h3 style={{
+                                color: 'white',
+                                margin: 0,
+                                fontSize: '1.5rem',
+                                fontWeight: '700',
+                                textShadow: '0 2px 4px rgba(0,0,0,0.7)'
+                              }}>
+                                {band.name}
+                              </h3>
+                            </div>
+                          </div>
+
+                          {/* Vote Information */}
+                          <div style={{ padding: '1.5rem' }}>
+                            <div style={{ marginBottom: '1rem' }}>
+                              <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '8px'
+                              }}>
+                                <span style={{ fontWeight: '600', fontSize: '1.1rem', color: '#1e293b' }}>
+                                  Votes Received
+                                </span>
+                                <span style={{
+                                  background: isTied
+                                    ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                                    : band.voteCount > 0
+                                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                                      : 'linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%)',
+                                  color: band.voteCount > 0 ? 'white' : '#6b7280',
+                                  padding: '6px 14px',
+                                  borderRadius: '20px',
+                                  fontSize: '1rem',
+                                  fontWeight: '700'
+                                }}>
+                                  {band.voteCount} Vote{band.voteCount !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+
+                              {/* Progress Bar */}
+                              <div style={{
+                                backgroundColor: '#f1f5f9',
+                                height: '12px',
+                                borderRadius: '10px',
+                                overflow: 'hidden',
+                                boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.1)'
+                              }}>
+                                <div style={{
+                                  background: isTied
+                                    ? 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)'
+                                    : `linear-gradient(90deg, ${percentage > 0 ? '#10b981' : '#e5e7eb'} 0%, ${percentage > 0 ? '#059669' : '#d1d5db'} 100%)`,
+                                  height: '100%',
+                                  width: `${Math.max(percentage, 5)}%`,
+                                  transition: 'width 0.6s ease',
+                                  borderRadius: percentage === 100 ? '10px' : '10px 0 0 10px'
+                                }} />
+                              </div>
+                            </div>
+
+                            {/* Individual Voters */}
+                            {band.voters.length > 0 && (
+                              <div>
+                                <div style={{
+                                  fontSize: '0.9rem',
+                                  fontWeight: '600',
+                                  color: '#64748b',
+                                  marginBottom: '8px'
+                                }}>
+                                  Voted by:
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                  {band.voters.map((vote, idx) => (
+                                    <div key={idx} style={{
+                                      background: isTied
+                                        ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                                        : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                      color: 'white',
+                                      padding: '4px 12px',
+                                      borderRadius: '15px',
+                                      fontSize: '0.85rem',
+                                      fontWeight: '600',
+                                      boxShadow: isTied
+                                        ? '0 2px 6px rgba(239, 68, 68, 0.3)'
+                                        : '0 2px 6px rgba(16, 185, 129, 0.3)'
+                                    }}>
+                                      {vote.userId}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             ) : (selectedVote.status === 'rating' || selectedVote.status === 'completed') && selectedVote.winner ? (
