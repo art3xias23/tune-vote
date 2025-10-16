@@ -6,27 +6,29 @@ const logger = winston.createLogger({
   format: winston.format.combine(
     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
     winston.format.errors({ stack: true }),
-    winston.format.json(),
-    winston.format.printf(({ timestamp, level, message, ...meta }) => {
-      // Format for better Loki/Grafana filtering
-      const baseLog = {
-        timestamp,
-        level,
-        message,
-        ...meta
-      };
-      return JSON.stringify(baseLog);
-    })
+    winston.format.json()
   ),
   transports: [
+    // Console transport outputs pure JSON for Docker/Loki
     new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.simple()
-      )
+      format: winston.format.json()
     })
   ]
 });
+
+// Also keep console.log working for backward compatibility
+const originalConsoleLog = console.log;
+console.log = function(...args) {
+  // Call original console.log for regular logging
+  originalConsoleLog.apply(console, args);
+
+  // Also send structured log for important messages
+  if (args[0] && typeof args[0] === 'string') {
+    if (args[0].includes('[Server]') || args[0].includes('[Spotify')) {
+      logger.info(args.join(' '), { source: 'console' });
+    }
+  }
+};
 
 // Structured logging functions for different action types
 const logUserAction = {
@@ -56,57 +58,6 @@ const logUserAction = {
     }
   },
 
-  // Group actions
-  group: {
-    create: (username, groupName, groupId) => {
-      logger.info('Group created', {
-        action: 'group.create',
-        username,
-        groupName,
-        groupId,
-        category: 'group'
-      });
-    },
-    update: (username, groupId, groupName, changes) => {
-      logger.info('Group updated', {
-        action: 'group.update',
-        username,
-        groupId,
-        groupName,
-        changes,
-        category: 'group'
-      });
-    },
-    delete: (username, groupId, groupName) => {
-      logger.info('Group deleted', {
-        action: 'group.delete',
-        username,
-        groupId,
-        groupName,
-        category: 'group'
-      });
-    },
-    addMember: (username, groupId, groupName, memberId) => {
-      logger.info('Member added to group', {
-        action: 'group.addMember',
-        username,
-        groupId,
-        groupName,
-        memberId,
-        category: 'group'
-      });
-    },
-    removeMember: (username, groupId, groupName, memberId) => {
-      logger.info('Member removed from group', {
-        action: 'group.removeMember',
-        username,
-        groupId,
-        groupName,
-        memberId,
-        category: 'group'
-      });
-    }
-  },
 
   // Vote actions
   vote: {
@@ -184,6 +135,18 @@ const logUserAction = {
         category: 'band'
       });
     },
+    createFromSpotify: (username, bandId, bandName, spotifyId, genres) => {
+      logger.info('Band added from Spotify', {
+        action: 'band.createFromSpotify',
+        username,
+        bandId,
+        bandName,
+        spotifyId,
+        genres,
+        source: 'spotify',
+        category: 'band'
+      });
+    },
     update: (username, bandId, bandName, changes) => {
       logger.info('Band updated', {
         action: 'band.update',
@@ -210,6 +173,17 @@ const logUserAction = {
         query,
         resultCount,
         category: 'band'
+      });
+    },
+    searchSpotify: (username, query, resultCount, foundArtists) => {
+      logger.info('Spotify API search performed', {
+        action: 'band.searchSpotify',
+        username,
+        query,
+        resultCount,
+        foundArtists,
+        category: 'spotify',
+        source: 'spotify_api'
       });
     }
   },

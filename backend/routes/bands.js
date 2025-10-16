@@ -148,6 +148,10 @@ router.get('/search-external', async (req, res) => {
         const artists = spotifySearchResponse.data.artists.items;
         console.log('[Spotify Search] Found', artists.length, 'artists');
 
+        // Log Spotify API search
+        const artistNames = artists.slice(0, 3).map(a => a.name);
+        logUserAction.band.searchSpotify(username || 'Unknown', q, artists.length, artistNames);
+
         for (const artist of artists.slice(0, 3)) { // Get top 3 results
           const existingBand = await Band.findOne({ name: artist.name });
 
@@ -245,9 +249,12 @@ router.post('/', async (req, res) => {
 
     await band.save();
 
-    // Log the band creation
-    const source = spotifyId ? 'spotify' : 'manual';
-    logUserAction.band.create(username || 'Unknown', band._id, band.name, source);
+    // Log the band creation with appropriate action based on source
+    if (spotifyId) {
+      logUserAction.band.createFromSpotify(username || 'Unknown', band._id, band.name, spotifyId, genres || []);
+    } else {
+      logUserAction.band.create(username || 'Unknown', band._id, band.name, 'manual');
+    }
 
     res.status(201).json(band);
   } catch (error) {

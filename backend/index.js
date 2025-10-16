@@ -35,7 +35,37 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.use(morgan('combined'));
+
+// Configure morgan to output JSON logs
+morgan.token('user', (req) => req.body?.username || req.query?.username || 'anonymous');
+morgan.token('body', (req) => JSON.stringify(req.body));
+
+const morganFormat = JSON.stringify({
+  timestamp: ':date[iso]',
+  method: ':method',
+  url: ':url',
+  status: ':status',
+  user: ':user',
+  response_time: ':response-time',
+  remote_addr: ':remote-addr',
+  user_agent: ':user-agent'
+});
+
+app.use(morgan((tokens, req, res) => {
+  return JSON.stringify({
+    timestamp: tokens.date(req, res, 'iso'),
+    method: tokens.method(req, res),
+    url: tokens.url(req, res),
+    status: parseInt(tokens.status(req, res)),
+    user: tokens.user(req, res),
+    response_time: parseFloat(tokens['response-time'](req, res)),
+    remote_addr: tokens['remote-addr'](req, res),
+    user_agent: tokens['user-agent'](req, res),
+    action: 'http.request',
+    category: 'http'
+  });
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
